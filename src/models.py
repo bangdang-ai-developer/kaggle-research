@@ -462,7 +462,8 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
     for ep in range(cfg.epochs):
         model.train()
         ep_loss, ep_n, t0 = 0.0, 0, time.time()
-        for x, y in dl_train:
+        n_batches = len(dl_train)
+        for bi, (x, y) in enumerate(dl_train, start=1):
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             opt.zero_grad(set_to_none=True)
             with torch.amp.autocast("cuda", enabled=cfg.amp and device.startswith("cuda")):
@@ -476,6 +477,10 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
             sched.step()
             ep_loss += loss.item() * len(y)
             ep_n += len(y)
+            if bi % 50 == 0 or bi == n_batches:  # progress mỗi 50 batch — xem live trên Kaggle
+                el = time.time() - t0
+                print(f"[train] ep {ep} batch {bi}/{n_batches} | {el:.0f}s | "
+                      f"loss={(ep_loss / max(ep_n, 1)):.3f} | ETA {el / bi * (n_batches - bi):.0f}s", flush=True)
         entry = {"epoch": ep, "train_loss": ep_loss / max(ep_n, 1), "epoch_sec": round(time.time() - t0, 2),
                  "lr": sched.get_last_lr()[0]}
         if dl_val is not None:

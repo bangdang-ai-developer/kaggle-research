@@ -13,16 +13,16 @@
    "trainable": 11199597
   },
   "sec_per_epoch": [
-   9.28,
-   9.35
+   10.94,
+   10.16
   ],
-  "train_time_sec": 20.5,
+  "train_time_sec": 23.1,
   "val": {
    "acc": 0.36666666666666664,
    "macro_f1": 0.31226551226551225
   },
   "peak_mem_gib": null,
-  "val_eval_sec": 0.5,
+  "val_eval_sec": 0.56,
   "checkpoint_mb": 42.8
  },
  "asf": {
@@ -33,7 +33,7 @@
   "init_max_logit_diff": 0.0,
   "gate_var": 2.391287671343889e-05,
   "subset_epoch_sec": [
-   2.0
+   2.05
   ],
   "best_val_macro_f1_subset": 0.0,
   "peak_mem_gib": null,
@@ -75,7 +75,7 @@
   },
   "grad_ok": true,
   "subset_epoch_sec": [
-   1.82
+   1.92
   ],
   "best_val_macro_f1_subset": 0.0,
   "prototype_usage": {
@@ -268,7 +268,7 @@
   "peak_mem_gib": null
  },
  "graph": {
-  "mini_time_sec": 7.6,
+  "mini_time_sec": 9.2,
   "info": {
    "probe_epochs": 1,
    "n_fit": 150,
@@ -280,47 +280,47 @@
  },
  "latency_batch1": {
   "resnet18": {
-   "median_ms": 8.50289649952174,
-   "p95_ms": 8.553414400103065,
+   "median_ms": 9.122583500356996,
+   "p95_ms": 10.709107849652353,
    "n_iter": 10,
    "batch": 1
   },
   "asf": {
-   "median_ms": 9.631270999307162,
-   "p95_ms": 9.729069049899408,
+   "median_ms": 10.170687500249187,
+   "p95_ms": 10.642004649253067,
    "n_iter": 10,
    "batch": 1
   },
   "cmp": {
-   "median_ms": 8.691562500644068,
-   "p95_ms": 8.996298099646083,
+   "median_ms": 8.88954149922938,
+   "p95_ms": 9.399210199990193,
    "n_iter": 10,
    "batch": 1
   },
   "smallcnn": {
-   "median_ms": 13.644270999066066,
-   "p95_ms": 14.064347799831012,
+   "median_ms": 17.815604499446636,
+   "p95_ms": 21.59307514930333,
    "n_iter": 10,
    "batch": 1
   },
   "mobilenetv3s": {
-   "median_ms": 29.592062999654445,
-   "p95_ms": 30.086212350670394,
+   "median_ms": 30.197063000741764,
+   "p95_ms": 30.86682949997339,
    "n_iter": 10,
    "batch": 1
   },
   "efficientnetb0": {
-   "median_ms": 85.02033350032434,
-   "p95_ms": 86.08638925061314,
+   "median_ms": 88.74995800033503,
+   "p95_ms": 91.54163139983211,
    "n_iter": 10,
    "batch": 1
   },
   "convnextt": {
-   "median_ms": 232.32099949927942,
-   "p95_ms": 240.90974375085352,
+   "median_ms": 283.5206460003974,
+   "p95_ms": 378.3172626500344,
    "n_iter": 10,
    "batch": 1
   }
  },
- "loader_sec_per_batch128": 0.0913
+ "loader_sec_per_batch128": 0.102
 }

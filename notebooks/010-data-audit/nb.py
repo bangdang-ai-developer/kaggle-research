@@ -112,13 +112,23 @@ df.head(3)
 # /kaggle/input là mount mạng (FUSE): đọc lặp nhiều pass có thể chậm bất thường giữa các
 # session (v4: cell decode ~108s; v5: >20 phút cùng cell). Đọc đúng 1 lần vào RAM
 # (~430MB cho 31.500 ảnh 13.5KB trung bình) rồi mọi bước sau chạy từ RAM.
+# Progress log mỗi 2.000 ảnh (rate + ETA, flush ngay) — xem live ở web UI "View Log".
 import hashlib
 import time as _time
 from io import BytesIO
 
+def prog(k: int, n: int, t0: float, every: int, label: str) -> None:
+    """In tiến độ mỗi `every` phần tử: elapsed, rate, ETA — flush=True để xem live trên Kaggle."""
+    if k > 0 and (k % every == 0 or k == n):
+        el = _time.time() - t0
+        rate = k / el if el > 0 else 0.0
+        eta = (n - k) / rate if rate > 0 else float("nan")
+        print(f"[progress] {label}: {k}/{n} ({100*k/n:.0f}%) | {el:.0f}s | {rate:.0f}/s | ETA {eta:.0f}s", flush=True)
+
 t_io = _time.time()
 blobs, sizes, bad, md5s = [], [], [], []
-for r in df.itertuples():
+_n = len(df)
+for _k, r in enumerate(df.itertuples(), start=1):
     p = os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id))
     try:
         with open(p, "rb") as f:
@@ -133,6 +143,7 @@ for r in df.itertuples():
         sizes.append(None)
         blobs.append(None)
         md5s.append(None)
+    prog(_k, _n, t_io, 2000, "single-pass I/O (đọc+verify+md5)")
 print(f"single-pass I/O xong {len(sizes)} ảnh trong {_time.time()-t_io:.1f}s | lỗi decode: {len(bad)}")
 
 ok_idx = [i for i, s in enumerate(sizes) if s is not None]
@@ -172,8 +183,10 @@ dup_md5.head(6)
 # ---- 3b) Near-duplicate: dHash + pairwise Hamming theo block + mutual-NN ----
 def dhash_from_blobs(blob_list: list[bytes], hash_size: int = 8) -> np.ndarray:
     out = np.zeros((len(blob_list), hash_size * hash_size), dtype=bool)
-    for i, b in enumerate(blob_list):
-        out[i] = dhash_bytes(b, hash_size)
+    _t0 = _time.time()
+    for i, b in enumerate(blob_list, start=1):
+        out[i - 1] = dhash_bytes(b, hash_size)
+        prog(i, len(blob_list), _t0, 5000, "dHash (từ RAM)")
     return out
 
 POPCOUNT = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint8)
@@ -202,7 +215,10 @@ def mutual_near_pairs(packed: np.ndarray, threshold: int, block: int = PW_BLOCK)
     best_j = np.full(n, -1, dtype=np.int64)
     best_d = np.full(n, SELF_DIST, dtype=np.int16)
     recs: list[tuple[int, int, int]] = []
+    _nblocks = (n + block - 1) // block
+    _bi, _t0 = 0, time.time()
     for s, dist in pairwise_hamming_block(packed, block):
+        _bi += 1
         e = s + len(dist)
         rows = dist.argmin(axis=1)
         rows_d = dist[np.arange(e - s), rows]
@@ -215,6 +231,9 @@ def mutual_near_pairs(packed: np.ndarray, threshold: int, block: int = PW_BLOCK)
             i, j = int(s + a), int(b)
             if i < j:
                 recs.append((i, j, int(dist[a, b])))
+        if _bi % 8 == 0 or _bi == _nblocks:  # progress pairwise — flush để xem live
+            el = time.time() - _t0
+            print(f"[progress] pairwise block {_bi}/{_nblocks} (hàng {e}/{n}) | {el:.0f}s | ETA {el/_bi*(_nblocks-_bi):.0f}s", flush=True)
     cand = pd.DataFrame(recs, columns=["i", "j", "hamming"])
     mut = [(i, j, d) for i, j, d in cand.itertuples(index=False) if best_j[i] == j and best_j[j] == i]
     return cand, pd.DataFrame(mut, columns=["i", "j", "hamming"]), best_j
@@ -388,7 +407,10 @@ if len(oversize):
 
 split_of: dict[int, str] = {}
 counts = {}
-for cls, gdf in unit.groupby("class_name"):
+_t_split = time.time()
+for _ci, (cls, gdf) in enumerate(unit.groupby("class_name"), start=1):
+    if _ci % 10 == 0 or _ci == 45:
+        print(f"[progress] split lớp {_ci}/45 ({cls}) | {time.time()-_t_split:.0f}s", flush=True)
     grps = sorted(gdf.dup_group.unique())
     rng.shuffle(grps)
     total = len(gdf)

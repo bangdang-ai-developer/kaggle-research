@@ -1,8 +1,10 @@
 run_id,kernel,model,config_key,seed,stage,status,submitted_at,gpu_hours_est,val_macro_f1,notes
-010-local-smoke,010-data-audit,-,-,-,audit,succeeded_local,2026-10-26,0,,"SMOKE PASS: mutual-NN self-test PASS, leakage PASS; popcount LUT block-wise (<400MB/block)"
-010-k8s-v1,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: papermill 'No kernel name found' — notebook thiếu kernelspec. Fixed nbmake.py"
-010-k8s-v2,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: FAIL-FAST dataset root — /kaggle/input rỗng đối với path cũ; id/slug lệch trước đó cũng đã sửa"
-010-k8s-v3,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: diagnostics cho thấy Kaggle mount /kaggle/input/datasets/<owner>/<slug> — đổi sang glob recursive"
-010-k8s-v4,010-data-audit,-,-,-,audit,running,2026-10-26,0,,"RUNNING sau fix glob; chờ complete (~20-30')"
-020-local-smoke,020-pilot,B1+ASF+CMP,-,-,pilot,succeeded_local,2026-10-26,0,,"PASS 8/8: ASF grad mechanics (gate step0=0, step2>0, Δw>0), margin targeting chính xác -m·w, proto/embed grads, val 0.67s/30 ảnh, ckpt 42.8MB"
-pending,020-pilot,B1+ASF+CMP,-,-,pilot,not_submitted,,,,requires 010 complete (kernel_sources)
+010-local-smoke,010-data-audit,-,-,-,audit,succeeded_local,2026-10-26,0,,"SMOKE PASS: mutual-NN self-test (multi-block), leakage PASS; block-wise pairwise <400MB/block"
+010-k8s-v1,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: papermill 'No kernel name found' — thiếu kernelspec. Fixed nbmake.py"
+010-k8s-v2,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: dataset root không thấy — id/slug lệch + path cũ"
+010-k8s-v3,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: diagnostics → Kaggle mount /kaggle/input/datasets/<owner>/<slug>; đổi glob recursive"
+010-k8s-v4,010-data-audit,-,-,-,audit,complete_results_rejected,2026-10-26,0,,"COMPLETE 424s nhưng pairwise chunk-offset bug (s=chunk index) → near-dup CSV sai; exact-dup+split vẫn valid; phát hiện qua cross-check local"
+010-k8s-v5,010-data-audit,-,-,-,audit,superseded_running,2026-10-26,0,,"Fix offset + self-test multi-block, nhưng bị I/O chậm bất thường (>35' ở cell decode vs 108s của v4); CLI không hủy được — để tự kết thúc; v6 thay"
+010-k8s-v6,010-data-audit,-,-,-,audit,running,2026-10-26,0,,"Single-pass I/O (đọc 1 lần ~430MB RAM, verify+MD5+dHash cùng lúc); CPU; self-test multi-block PASS; local verify: 20 candidates/16 mutual/8 exact nhóm"
+020-local-smoke,020-pilot,B1+ASF+CMP,-,-,pilot,succeeded_local,2026-10-26,0,,"PASS 8/8: ASF grad mechanics, margin targeting -m·w chính xác, proto/embed grads, val cost + ckpt size đo được"
+pending,020-pilot,B1+ASF+CMP,-,-,pilot,not_submitted,,,,requires 010 v6 complete; GPU T4x2 (API default), internet on cho pretrained weights
