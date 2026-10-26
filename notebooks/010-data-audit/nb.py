@@ -108,15 +108,34 @@ df = df.reset_index(drop=True)
 df.head(3)
 
 # %%
-# ---- 2) Decode + kích thước ----
-sizes, bad = [], []
+# ---- 2) MỘT pass I/O: đọc bytes 1 lần → verify + kích thước + MD5 + dHash ----
+# /kaggle/input là mount mạng (FUSE): đọc lặp nhiều pass có thể chậm bất thường giữa các
+# session (v4: cell decode ~108s; v5: >20 phút cùng cell). Đọc đúng 1 lần vào RAM
+# (~430MB cho 31.500 ảnh 13.5KB trung bình) rồi mọi bước sau chạy từ RAM.
+import hashlib
+import time as _time
+from io import BytesIO
+
+t_io = _time.time()
+blobs, sizes, bad, md5s = [], [], [], []
 for r in df.itertuples():
+    p = os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id))
     try:
-        with Image.open(os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id))) as im:
-            im.verify()  # verify header nhanh
+        with open(p, "rb") as f:
+            b = f.read()
+        with Image.open(BytesIO(b)) as im:
+            im.verify()  # xác thực header + decode structural
             sizes.append(im.size)
+        blobs.append(b)
+        md5s.append(hashlib.md5(b).hexdigest())
     except Exception as e:  # noqa: BLE001 — audit phải thu mọi lỗi decode
         bad.append({"image_id": r.image_id, "error": repr(e)})
+        sizes.append(None)
+        blobs.append(None)
+        md5s.append(None)
+print(f"single-pass I/O xong {len(sizes)} ảnh trong {_time.time()-t_io:.1f}s | lỗi decode: {len(bad)}")
+
+ok_idx = [i for i, s in enumerate(sizes) if s is not None]
 size_arr = np.array([s for s in sizes if s])
 sizes_df = pd.DataFrame(size_arr, columns=["w", "h"])
 size_stats = {
@@ -128,16 +147,19 @@ size_stats = {
 }
 print(size_stats)
 print("bad images:", bad[:10])
-df = df.iloc[[i for i, s in enumerate(sizes) if s is not None]].reset_index(drop=True)
+blobs = [blobs[i] for i in ok_idx]
+md5s = [md5s[i] for i in ok_idx]
+df = df.iloc[ok_idx].reset_index(drop=True)
+
+def dhash_bytes(b: bytes, hash_size: int = 8) -> np.ndarray:
+    with Image.open(BytesIO(b)) as im:
+        g = im.convert("L").resize((hash_size + 1, hash_size), Image.LANCZOS)
+    a = np.asarray(g, dtype=np.int16)
+    return (a[:, 1:] > a[:, :-1]).reshape(-1)
 
 # %%
-# ---- 3a) Exact duplicate theo MD5 (đã xác minh — gộp tự động) ----
-import hashlib
-
-md5s = []
-for r in df.itertuples():
-    with open(os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id)), "rb") as f:
-        md5s.append(hashlib.md5(f.read()).hexdigest())
+# ---- 3a) Exact duplicate theo MD5 (đã xác minh — gộp tự động; hash từ RAM) ----
+df["md5"] = md5s
 df["md5"] = md5s
 dup_md5 = df[df.duplicated("md5", keep=False)].sort_values("md5")
 n_dup_files = int(len(dup_md5))
@@ -148,13 +170,10 @@ dup_md5.head(6)
 
 # %%
 # ---- 3b) Near-duplicate: dHash + pairwise Hamming theo block + mutual-NN ----
-def dhash_batch(paths_: list[str], hash_size: int = 8) -> np.ndarray:
-    out = np.zeros((len(paths_), hash_size * hash_size), dtype=bool)
-    for i, p in enumerate(paths_):
-        with Image.open(p) as im:
-            g = im.convert("L").resize((hash_size + 1, hash_size), Image.LANCZOS)
-        a = np.asarray(g, dtype=np.int16)
-        out[i] = (a[:, 1:] > a[:, :-1]).reshape(-1)
+def dhash_from_blobs(blob_list: list[bytes], hash_size: int = 8) -> np.ndarray:
+    out = np.zeros((len(blob_list), hash_size * hash_size), dtype=bool)
+    for i, b in enumerate(blob_list):
+        out[i] = dhash_bytes(b, hash_size)
     return out
 
 POPCOUNT = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint8)
@@ -234,14 +253,14 @@ assert sorted(map(tuple, _cand_2[["i", "j"]].values)) == [(0, 1), (1, 2)] and so
 print("self-test mutual_near_pairs: PASS cả multi-block (chunk 0 và 1) và 1-chunk; candidate-only không gộp")
 
 t0 = time.time()
-paths = [os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id)) for r in df.itertuples()]
-hashes = dhash_batch(paths)
+hashes = dhash_from_blobs(blobs)
 packed = np.packbits(hashes, axis=1)
-print(f"dHash xong {len(hashes)} ảnh trong {time.time()-t0:.1f}s | packed: {packed.shape} {packed.dtype}")
+print(f"dHash xong (từ RAM) {len(hashes)} ảnh trong {time.time()-t0:.1f}s | packed: {packed.shape} {packed.dtype}")
+del blobs  # giải phóng ~430MB trước pairwise
 
 t0 = time.time()
 pairs_df, mut_df, best_j = mutual_near_pairs(packed, NEARDUP_HAMMING_MAX)
-print(f"pairwise 2 pass xong trong {time.time()-t0:.1f}s | candidates: {len(pairs_df)} | mutual-NN pairs: {len(mut_df)}")
+print(f"pairwise xong trong {time.time()-t0:.1f}s | candidates: {len(pairs_df)} | mutual-NN pairs: {len(mut_df)}")
 
 for d_, name in ((pairs_df, "pairs_df"), (mut_df, "mut_df")):
     if len(d_):
@@ -271,7 +290,7 @@ def grid_pairs(pairs_subset: pd.DataFrame, fname: str, k: int = 12):
         axes = axes[None, :]
     for row, (_, p) in enumerate(pairs_subset.head(k).iterrows()):
         for col, idx in enumerate((int(p.i), int(p.j))):
-            with Image.open(paths[idx]) as im:
+            with Image.open(os.path.join(DATA_ROOT, df.image_id[idx])) as im:
                 axes[row, col].imshow(im)
             axes[row, col].set_title(f"{df.image_id[idx]} (h={int(p.hamming)})", fontsize=7)
             axes[row, col].axis("off")
