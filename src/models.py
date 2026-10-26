@@ -376,6 +376,53 @@ class CMPResNet18(nn.Module):
                 "max_inter_proto_cos_mean": float(np.mean(inter)) if inter else None}
 
 
+# ---------------------------------------------------------------- data staging
+
+
+def stage_dataset(manifest: pd.DataFrame, src_root: str, dst_root: str, num_threads: int = 16,
+                  log_every: int = 2000) -> str:
+    """Copy ảnh từ mount FUSE (/kaggle/input — ~17-35 ảnh/s đọc lẻ) sang disk local MỘT lần,
+    song song theo thread (I/O-bound). Trả về dst_root. Verify: đếm + sample MD5 khớp nguồn.
+    Kernel huấn luyện đọc từ dst_root sau đó — epoch không còn chờ mạng."""
+    import hashlib
+    import shutil
+    from concurrent.futures import ThreadPoolExecutor
+
+    os.makedirs(dst_root, exist_ok=True)
+    ids = manifest.image_id.tolist()
+
+    def copy_one(rel: str) -> tuple[str, str]:
+        dst = os.path.join(dst_root, rel)
+        d = os.path.dirname(dst)
+        if not os.path.isdir(d):
+            os.makedirs(d, exist_ok=True)
+        if not os.path.exists(dst):
+            shutil.copy2(os.path.join(src_root, rel), dst)
+        with open(dst, "rb") as f:
+            return rel, hashlib.md5(f.read()).hexdigest()
+
+    t0 = time.time()
+    hashes = {}
+    with ThreadPoolExecutor(max_workers=num_threads) as ex:
+        for k, (rel, h) in enumerate(ex.map(copy_one, ids), start=1):
+            hashes[rel] = h
+            if k % log_every == 0 or k == len(ids):
+                el = time.time() - t0
+                print(f"[stage] {k}/{len(ids)} ({100*k/len(ids):.0f}%) | {el:.0f}s | "
+                      f"{k/el:.0f}/s | ETA {el/k*(len(ids)-k):.0f}s", flush=True)
+    # verify: đếm + sample 100 MD5 đối chiếu nguồn
+    staged = sum(len(files) for _, _, files in os.walk(dst_root))
+    assert staged == len(ids), f"staged {staged} != {len(ids)}"
+    sample = ids[:: max(len(ids) // 100, 1)][:100]
+    for rel in sample:
+        with open(os.path.join(src_root, rel), "rb") as f:
+            src_h = hashlib.md5(f.read()).hexdigest()
+        assert hashes[rel] == src_h, f"MD5 lệch sau stage: {rel}"
+    print(f"[stage] VERIFY PASS: {staged} file, {len(sample)} MD5 sample khớp nguồn | "
+          f"tổng {time.time()-t0:.0f}s")
+    return dst_root
+
+
 # ---------------------------------------------------------------- confusion graph (train-only)
 
 

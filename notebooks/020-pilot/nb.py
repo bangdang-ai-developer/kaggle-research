@@ -76,9 +76,20 @@ print("audit run_id:", audit["run_id"], "| smoke:", audit["smoke"], "| split sha
 # %% embed:src/models.py
 
 # %%
+# ---- STAGE dataset sang disk local (1 lần) — sửa bottleneck FUSE ~17-37 ảnh/s làm GPU 0% ----
+# v1 pilot đo được: data loader 7.35s/batch (17 ảnh/s) từ /kaggle/input, GPU hầu như 0%.
+# Copy train+val (~26.775 ảnh) sang /tmp (disk local, còn ~55GiB) song song 16 thread,
+# verify MD5 sample, rồi mọi loader đọc từ local — epoch compute-bound.
+full_train = manifest[manifest.split == "train"].reset_index(drop=True)
+if DATA_ROOT.startswith("/kaggle/"):
+    DATA_ROOT = stage_dataset(manifest, DATA_ROOT, "/tmp/resisc45_staged/NWPU-RESISC45", num_threads=16)
+    print("DATA_ROOT (staged):", DATA_ROOT)
+else:
+    print("local run — bỏ qua stage (DATA_ROOT đã là disk local)")
+
+# %%
 # ---- Dataset/loaders kiểm tra tốc độ data loader ----
 set_seed(SEED)
-full_train = manifest[manifest.split == "train"].reset_index(drop=True)
 NUM_WORKERS = 0 if sys.platform == "darwin" else 4  # macOS smoke local: 0 worker (spawn hay crash); Kaggle Linux: 4
 cfg_probe = TrainConfig(num_classes=45, seed=SEED, num_workers=NUM_WORKERS, batch_size=128)
 dl_tr, dl_va = make_loaders(manifest, DATA_ROOT, cfg_probe)  # truyền train+val; make_loaders tự lọc split
