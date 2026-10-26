@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Data & outputs - khong commit (tai lai bang scripts/fetch_data.sh, output pull tu Kaggle)
+data/
+outputs/
+
+# macOS
+.DS_Store

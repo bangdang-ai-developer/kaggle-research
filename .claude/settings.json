@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(uv sync)",
+      "Bash(uv add *)",
+      "Bash(uv python *)",
+      "Bash(kaggle kernels list *)",
+      "Bash(kaggle kernels status *)",
+      "Bash(kaggle kernels output *)",
+      "Bash(kaggle competitions list *)",
+      "Bash(kaggle competitions files *)",
+      "Bash(kaggle datasets list *)",
+      "Bash(./scripts/kernel_status.sh *)",
+      "Bash(./scripts/pull_output.sh *)",
+      "Bash(./scripts/fetch_data.sh *)",
+      "Bash(scripts/kernel_status.sh *)",
+      "Bash(scripts/pull_output.sh *)",
+      "Bash(scripts/fetch_data.sh *)"
+    ],
+    "deny": []
+  }
+}

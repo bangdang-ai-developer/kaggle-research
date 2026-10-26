@@ -1,0 +1,18 @@
+[project]
+name = "kaggle-research"
+version = "0.1.0"
+description = "Kaggle research workspace - notebooks authored locally, executed on Kaggle GPU"
+requires-python = ">=3.12"
+dependencies = [
+    "kaggle>=1.7",
+    "jupyterlab>=4",
+    "ipykernel>=6",
+    "nbformat>=5.10",
+    "nbclient>=0.10",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "scikit-learn>=1.5",
+    "matplotlib>=3.9",
+    "pyarrow>=17",
+    "tqdm>=4.66",
+]
