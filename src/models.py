@@ -331,6 +331,7 @@ class CMPResNet18(nn.Module):
         kappa = self.logit_scale.clamp(max=math.log(100.0))
         logits = torch.logsumexp(sim * kappa, dim=2) - math.log(self.K)
         if apply_margin and self.confusion and labels is not None:
+            labels = labels.to(self.conf_w.device)      # chống lệch device giữa labels và buffer
             w = self.conf_w[labels]                     # (B, C): w[a, b] trên hàng a
             w = w * (1.0 - F.one_hot(labels, self.C).float())
             logits = logits - self.conf_margin * w
@@ -358,18 +359,17 @@ class CMPResNet18(nn.Module):
                     break
                 e = self.embeddings(x.to(device))
                 p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1)
-                pc = p[y]                            # (B, K, D) prototype của lớp đúng
+                pc = p[y.to(p.device)]               # (B, K, D) prototype của lớp đúng — index cùng device
                 sim = torch.einsum("bd,bkd->bk", e, pc)
-                for cls, proto in zip(y, sim.argmax(1)):
-                    assign[int(cls), int(proto)] += 1
+                for cls, proto in zip(y.tolist(), sim.argmax(1).cpu().tolist()):
+                    assign[cls, proto] += 1
                 n_seen += len(y)
         inter = []
         with torch.no_grad():
-            p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1)
+            p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1).cpu()  # phân tích nhỏ → CPU
             if self.K > 1:
-                pc = F.normalize(p, dim=-1)
-                cos = torch.bmm(pc, pc.transpose(1, 2))
-                eye = torch.eye(self.K, device=cos.device).bool().unsqueeze(0)
+                cos = torch.bmm(p, p.transpose(1, 2))
+                eye = torch.eye(self.K).bool().unsqueeze(0)
                 inter = cos.masked_fill(eye, 0).amax(dim=(1, 2)).tolist()
         return {"n_seen": n_seen, "assign_per_class_proto": assign.tolist(),
                 "unused_proto_classes": int((assign.sum(1) == 0).sum()),

@@ -200,14 +200,14 @@ params_cmp = count_params(cmp_model)
 cmp_model.eval()
 with torch.no_grad():
     e_t = cmp_model.embeddings(xb[:8].to(device))
-    y_mix = torch.tensor([0, 1, 0, 3, 1, 3, 0, 1])  # trộn nhiều nhãn
+    y_mix = torch.tensor([0, 1, 0, 3, 1, 3, 0, 1], device=device)  # trộn nhiều nhãn — cùng device với model
     l_m = cmp_model.logits_from_emb(e_t, apply_margin=True, labels=y_mix)
     l_p = cmp_model.logits_from_emb(e_t, apply_margin=False, labels=y_mix)
 delta = (l_m - l_p)
 exp_delta = -(cmp_model.conf_margin * cmp_model.conf_w[y_mix]) * (1.0 - torch.nn.functional.one_hot(y_mix, 45).float())
 margin_targeting_ok = bool(torch.allclose(delta, exp_delta, atol=1e-6))
-delta_label0_40 = float(delta[y_mix == 0][:, 40].mean())
-delta_on_label = float(delta[torch.arange(8), y_mix].abs().max())
+delta_label0_40 = float((delta[y_mix == 0][:, 40]).mean())
+delta_on_label = float(delta[torch.arange(8, device=device), y_mix].abs().max())
 print("CMP margin targeting (Δ == −m·w trên negative, Δ[label]=0):", "PASS" if margin_targeting_ok else "FAIL")
 print(f"  Δlogit[40 | label 0] = {delta_label0_40:.4f} (mong đợi −0.24) | |Δ| trên nhãn đúng max = {delta_on_label:.1e}")
 # (b) gradient prototype + embedding nhận được
