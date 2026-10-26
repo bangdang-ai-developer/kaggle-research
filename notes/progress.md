@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-10-26 (chiều) — GIAI ĐOẠN B HOÀN THÀNH: pilot PASS trên T4
+
+**Kết quả pilot (bằng chứng: `outputs/resisc45-pilot-v2-local-stage/pilot_report.json`):**
+- 8/8 checks PASS: B1 epoch hợp lý (42–44s), ASF init ≡ ResNet18 (Δ=0.0), gate hoạt động, ASF residual học được (grad đúng lý thuyết: gate grad 0 ở step0 → >0 từ step1, Δw=158), CMP margin targeting chính xác (Δ=−0.24=−m·w, Δ nhãn đúng =0), prototype/embed/backbone đều có grad, latency đo được 7 model, chi phí val/ckpt đo được (4s / 42.8MB).
+- Chất lượng sanity: ResNet18 val **acc 91.1% / macro-F1 91.2% sau 2 epoch** — hợp lý với RESISC45.
+- Params: RN18 11.20M / ASF 11.60M (+3.6%) / CMP 11.49M (+2.5%).
+- Prototype usage: 0 unused, inter-proto cos 0.29 (không collapse ở smoke).
+- Compute budget chốt: **~8.7h mục tiêu + dự phòng → trần ~11h/30h tuần** — dư dả cho 3 seed mọi model.
+
+**Bài học vận hành (đã ghi vào compute_budget.md):** stage local bắt buộc; device-check khi smoke CPU; 409 khi push đè; report phải pull/verify chứ không tin status.
+
+**Bước tiếp — Giai đoạn C:** chờ duyệt push 030-baselines (screening B0–B4 8 epoch 1 seed) → 040/050 ablation screening → quyết định config final.
+
 ## 2026-10-26 — Giai đoạn A hoàn thành (local checks + docs + data audit logic)
 
 **Đã xác minh:**

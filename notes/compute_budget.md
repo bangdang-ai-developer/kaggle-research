@@ -1,38 +1,47 @@
-# Compute Budget — dự toán trước pilot
+# Compute Budget — CHỐT TỪ SỐ ĐO THẬT (pilot v2, T4, 2026-10-26)
 
-**Trần:** Kaggle GPU quota ~30h/tuần (T4 ×2 có sẵn nhưng 1 kernel dùng 1 GPU). **Chưa kiểm tra số dư thực tế** (Kaggle không có API công khai đọc GPU quota — kiểm tra bằng `skill status` khi có competition hoặc user xem web UI). Mọi số dưới đây là **ước tính chờ đo thật ở pilot**.
+**Trần:** Kaggle GPU quota ~30h/tuần. **Số liệu nguồn:** `outputs/resisc45-pilot-v2-local-stage/pilot_report.json` (manual draft run trên T4, stage local dataset, split `cc70020a`).
 
-## Tham số ước tính
+## Số đo thật (T4, batch 128, AMP, staged local)
 
-- Train 23.625 ảnh (525×45), 256×256, batch 128, AMP, T4.
-- Ước 45–90 s/epoch với ResNet18-size (đo thật ở pilot 020 trước khi chốt).
+| Thành phần | Giá trị đo |
+|---|---|
+| ResNet18 epoch (23.625 ảnh) | **42–44s** + val eval 4s |
+| ASF subset epoch (4.725 ảnh) | 12.2s → full ≈ 52s/epoch (+22% so RN18) |
+| CMP subset epoch | 11.1s → full ≈ 50s/epoch |
+| Peak GPU mem | 2.19–2.63 GiB (nhiều headroom trên T4 15GiB) |
+| Val eval (3.149 ảnh) | 4.0s |
+| Stage dataset local (26.775 ảnh, 16 threads) | 18–105s tùy session |
+| Checkpoint | 42.8 MB/model |
+| Latency batch-1 | smallcnn 1.6 / RN18 2.6 / CMP 2.6 / ASF 4.7 / MBV3 5.1 / ConvNeXt-T 6.1 / EffB0 7.8 ms |
+| Confusion graph probe (full, ngoại suy) | ≈ 4–5 phút/seed (6 epoch trên 21.3k fit + predict 1.05k) |
+| Sanity chất lượng | B1 val acc 91.1% / F1 91.2% sau 2 epoch — hợp lý với RESISC45 |
 
-## Kế hoạch chi tiêu (đơn vị: giờ GPU, ước tính)
+## Kế hoạch chi (giờ GPU, ước tính từ số đo trên; epoch = train+val)
 
-| Hạng mục | Kernel | Runs | Ước/run | Tổng |
-|---|---|---|---|---|
-| Data audit + pilot + đo thời gian | 010 + 020 | 2 | 0.5 | 1.0 |
-| Baseline screening (B0–B4, 8 epoch, 1 seed) | 030 | 5 | 0.3 | 1.5 |
-| ASF ablation screening (A1, A2, ± spatial-branch control, 8 epoch) | 040 | 3–4 | 0.3 | 1.2 |
-| CMP ablation screening (C1, C2, C3, 8 epoch + probe graph) | 050 | 3–4 | 0.4 | 1.6 |
-| Final: 5 baseline × 3 seed × 15 epoch | 060 | 15 | 0.6 | 9.0 |
-| Final: 2 proposed × 3 seed × 15 epoch (+ graph CMP) | 060 | 6 | 0.7 | 4.2 |
-| Final eval: test metrics + latency + robustness | 070 | 1–2 | 0.5 | 1.0 |
-| Dự phòng lỗi/rerun | — | — | — | ~5.4 |
-| **Tổng dự toán** | | | | **≈ 25h** |
+| Hạng mục | Tính | Giờ |
+|---|---|---|
+| Screening 030: B0–B4, 8 epoch, 1 seed | 8×(30+39+35+94+134)s ≈ 43m | 0.7 |
+| Screening 040: ASF A1/A2/spatial-control, 8 epoch | 3×8×52s ≈ 21m | 0.35 |
+| Screening 050: CMP C1/C2/C3 (+probe C3), 8 epoch | ≈ 20m + 5m | 0.45 |
+| Final 060: 5 baseline × 3 seed × 15 epoch | 3×15×(30+39+35+94+134)s ≈ 4.7h | 4.7 |
+| Final 060: ASF ×3 seed | 3×15×52s ≈ 39m (+A3 nếu đủ) | 0.75 |
+| Final 060: CMP ×3 seed + graph probe mỗi seed | 37m + 15m | 0.9 |
+| Eval 070: test metrics + latency + robustness | | 0.5 |
+| Stage + boot 5–6 kernel | | 0.3 |
+| **Tổng mục tiêu** | | **≈ 8.7h** |
+| Dự phòng 25% (rerun, lỗi) | | 2.2h |
+| **Trần chi tiêu** | | **≈ 11h / 30h** ✓ |
 
-Giữ 15–20% dự phòng → **ngân sách mục tiêu ≤ 25h/tuần**, trong trần 30h.
+Quota dư ~19h → có thể mở rộng: A3 (gate consistency) + C4 (diversity) ×3 seed (+~1.5h), seed thứ 3 cho ablation (+~1h), robustness mở rộng. Quyết định sau khi xem kết quả screening.
 
-## Quy tắc cắt giảm nếu vượt (theo thứ tự, phải ghi log)
+## Quy tắc cắt giảm (nếu phát sinh lỗi chuỗi)
 
-1. Giảm ablation: bỏ A3/C4 trước.
-2. Baseline mạnh nhất (B4 ConvNeXt-T) 3 seed → 2 seed (ghi rõ).
-3. Screening subset 50% train.
-4. KHÔNG cắt: seed 3 của 2 proposed, đối chứng trực tiếp A0/C0/C1, final test, integrity checks.
+1. Bỏ A3/C4 trước → 2. B4 ConvNeXt-T 3 seed → 2 seed (ghi rõ) → 3. KHÔNG cắt: 3 seed của ASF/CMP, đối chứng trực tiếp, final test.
 
-## Nguyên tắc vận hành
+## Vận hành (bài học từ pilot)
 
-- Mỗi kernel có giới hạn epoch/runtime + smoke mode trước.
-- Poll status chu kỳ ≥ 5 phút; không rerun tự động vô hạn.
-- Mỗi run có `run_id`; ghi `experiment_registry.csv` ngay khi submit.
-- Kernel `complete` ≠ experiment thành công: phải parse metrics + artifact.
+- **BẮT BUỘC stage dataset local** đầu mỗi kernel huấn luyện (`stage_dataset()` trong src/models.py) — FUSE trực tiếp 17 ảnh/s làm GPU 0%.
+- Mỗi kernel có smoke mode + `[train]`/`[stage]` progress log; kiểm tra model-on-device trước khi forward (CPU smoke không bắt được CUDA mismatch).
+- Kernel `complete` ≠ thành công; poll 5–10 phút; push đè khi đang chạy → 409, dùng kernel mới nếu cần.
+- run_id trong report ghi "020-pilot-v1" (config không đổi nhãn) — ánh xạ thật: kernel `resisc45-pilot-v2-local-stage`, draft run sau ver3 fix (commit a2c0998).
