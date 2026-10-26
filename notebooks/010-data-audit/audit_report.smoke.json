@@ -1,0 +1,39 @@
+{
+ "run_id": "010-data-audit-v1",
+ "smoke": true,
+ "dataset": "punfake/resisc45",
+ "data_root_seen": "../../data/raw/punfake---resisc45/NWPU-RESISC45",
+ "n_images": 300,
+ "n_classes": 45,
+ "sizes": {
+  "decoded_ok": 300,
+  "decode_errors": 0,
+  "w_min": 256,
+  "w_max": 256,
+  "h_min": 256,
+  "h_max": 256,
+  "n_non_256x256": 0
+ },
+ "decode_errors": [],
+ "exact_dup_files": 0,
+ "exact_dup_groups": 0,
+ "exact_dup_cross_class_groups": 0,
+ "neardup_hamming_max": 6,
+ "neardup_candidate_pairs": 0,
+ "neardup_same_class_pairs": 0,
+ "neardup_cross_class_pairs": 0,
+ "dup_groups_total": 300,
+ "split_seed": 42,
+ "split_sha256": "d2cc4dd9eb852a9aa788edab3ff9293052e9a4062eba427bc06ee4105a8b5534",
+ "split_counts": {
+  "train": 225,
+  "val": 30,
+  "test": 45
+ },
+ "per_class_split_min": {
+  "train": 45,
+  "val": 6,
+  "test": 9
+ },
+ "elapsed_sec": 10.0
+}

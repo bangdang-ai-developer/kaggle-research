@@ -1,0 +1,292 @@
+{
+ "run_id": "020-pilot-v1",
+ "device": "cpu",
+ "gpu": "cpu",
+ "torch": "2.14.1",
+ "cuda": null,
+ "manifest": "split_manifest.smoke.csv",
+ "split_sha256": "d2cc4dd9eb852a9aa788edab3ff9293052e9a4062eba427bc06ee4105a8b5534",
+ "audit_smoke": true,
+ "resnet18_full": {
+  "params": {
+   "total": 11199597,
+   "trainable": 11199597
+  },
+  "sec_per_epoch": [
+   10.06,
+   9.71
+  ],
+  "train_time_sec": 21.5,
+  "val": {
+   "acc": 0.36666666666666664,
+   "macro_f1": 0.31226551226551225
+  },
+  "peak_mem_gib": null
+ },
+ "asf": {
+  "params": {
+   "total": 11603573,
+   "trainable": 11603573
+  },
+  "init_max_logit_diff": 0.0,
+  "gate_var": 2.391287671343889e-05,
+  "subset_epoch_sec": [
+   1.99
+  ],
+  "best_val_macro_f1_subset": 0.0
+ },
+ "cmp": {
+  "params": {
+   "total": 11485249,
+   "trainable": 11485249
+  },
+  "margin_delta_logit": -0.24000000953674316,
+  "subset_epoch_sec": [
+   1.83
+  ],
+  "best_val_macro_f1_subset": 0.0,
+  "prototype_usage": {
+   "n_seen": 45,
+   "assign_per_class_proto": [
+    [
+     2,
+     7
+    ],
+    [
+     7,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     0,
+     9
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "unused_proto_classes": 40,
+   "max_inter_proto_cos_mean": 0.020970754904879464
+  }
+ },
+ "graph": {
+  "mini_time_sec": 8.6,
+  "info": {
+   "probe_epochs": 1,
+   "n_fit": 150,
+   "n_graph": 50,
+   "n_pairs_active": 3,
+   "max_n": 8,
+   "confusion_rate_graph": 0.72
+  }
+ },
+ "latency_batch1": {
+  "resnet18": {
+   "median_ms": 8.865958500337001,
+   "p95_ms": 9.247350300574908,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "asf": {
+   "median_ms": 9.944041999915498,
+   "p95_ms": 10.267868599657959,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "cmp": {
+   "median_ms": 8.782479500041518,
+   "p95_ms": 9.069715100031317,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "smallcnn": {
+   "median_ms": 13.684562499747699,
+   "p95_ms": 13.991008150151174,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "mobilenetv3s": {
+   "median_ms": 29.537437499584485,
+   "p95_ms": 30.138312649887666,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "efficientnetb0": {
+   "median_ms": 86.78189600050246,
+   "p95_ms": 88.00559404990054,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "convnextt": {
+   "median_ms": 234.79918700058988,
+   "p95_ms": 260.6945828501466,
+   "n_iter": 10,
+   "batch": 1
+  }
+ },
+ "loader_sec_per_batch128": 0.0917
+}
