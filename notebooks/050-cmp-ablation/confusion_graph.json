@@ -1,0 +1,21 @@
+{
+ "shape": [
+  45,
+  45
+ ],
+ "info": {
+  "probe_epochs": 1,
+  "n_fit": 205,
+  "n_graph": 20,
+  "n_pairs_active": 1,
+  "max_n": 3,
+  "confusion_rate_graph": 0.85
+ },
+ "top_pairs": [
+  {
+   "a": 2,
+   "b": 1,
+   "w": 1.0
+  }
+ ]
+}

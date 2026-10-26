@@ -60,6 +60,7 @@ class TrainConfig:
     # ASF
     asf_fixed_fusion: bool = False        # A1 (True) vs A2 (False)
     asf_feature_dim: int = 128
+    asf_detail_mode: str = "haar"         # "haar" | "conv" (đối chứng spatial)
     # CMP
     cmp_n_proto: int = 1                  # C1/C2: 1 hoặc 2, 4
     cmp_confusion: bool = False           # C3
@@ -163,7 +164,7 @@ def build_model(cfg: TrainConfig, pretrained: bool = True) -> nn.Module:
         return m
     if cfg.model_key == "asf":
         return ASFResNet18(cfg.num_classes, pretrained=pretrained, fixed_fusion=cfg.asf_fixed_fusion,
-                           feature_dim=cfg.asf_feature_dim)
+                           feature_dim=cfg.asf_feature_dim, detail_mode=cfg.asf_detail_mode)
     if cfg.model_key == "cmp":
         return CMPResNet18(cfg.num_classes, pretrained=pretrained, n_proto=cfg.cmp_n_proto,
                            embed_dim=cfg.cmp_embed_dim, confusion=cfg.cmp_confusion,
@@ -220,7 +221,7 @@ class ASFResNet18(nn.Module):
     """
 
     def __init__(self, num_classes: int = 45, pretrained: bool = True, fixed_fusion: bool = False,
-                 feature_dim: int = 128):
+                 feature_dim: int = 128, detail_mode: str = "haar"):
         super().__init__()
         import torchvision
 
@@ -229,11 +230,16 @@ class ASFResNet18(nn.Module):
         self.layer1, self.layer2, self.layer3, self.layer4 = bb.layer1, bb.layer2, bb.layer3, bb.layer4
         self.fixed_fusion = fixed_fusion
         self.feature_dim = feature_dim
-        self.n_components = 8  # 2 stage × 4 subband
+        self.detail_mode = detail_mode  # "haar" (A1/A2) | "conv" (đối chứng spatial cùng chi phí)
+        self.n_components = 8  # 2 stage × (LL + 3 detail)
         F_ = feature_dim
         self.proj = nn.ModuleList([nn.Sequential(nn.Conv2d(c, F_, 1, bias=False), nn.BatchNorm2d(F_),
                                                  nn.ReLU(inplace=True)) for c in (128, 128, 128, 128, 512, 512, 512, 512)])
         self.pool = nn.AdaptiveAvgPool2d(1)
+        if detail_mode == "conv":
+            # đối chứng spatial: 3 detail "học được" (depthwise 3×3 s2) thay 3 subband Haar (miễn phí tham số)
+            self.detail_conv = nn.ModuleList([nn.Conv2d(c, c, 3, stride=2, padding=1, groups=c, bias=False)
+                                              for c in (128, 128, 128, 512, 512, 512)])
         if fixed_fusion:
             self.fixed_logits = nn.Parameter(torch.zeros(self.n_components))
         else:
@@ -243,18 +249,30 @@ class ASFResNet18(nn.Module):
         nn.init.zeros_(self.out_proj.bias)
         self.head = nn.Linear(512, num_classes)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        h = self.stem(x)
-        h1 = self.layer1(h)
-        f2 = self.layer2(h1)     # 128ch
-        f3 = self.layer3(f2)
-        f4 = self.layer4(f3)     # 512ch
+    def _backbone_feats(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        h1 = self.layer1(self.stem(x))
+        f2 = self.layer2(h1)     # 128ch, 32×32
+        f4 = self.layer4(self.layer3(f2))  # 512ch, 16×16
+        return f2, f4
+
+    def _component_feats(self, f2: torch.Tensor, f4: torch.Tensor) -> list[torch.Tensor]:
+        """8 vector (B, F): mỗi stage gồm LL (≡ full feature map) + 3 detail.
+        detail_mode 'haar': LH/HL/HH từ Haar DWT (miễn phí tham số);
+        'conv': 3 detail học được (depthwise 3×3 s2) — đối chứng spatial cùng kiến trúc gate/proj."""
         feats = []
-        for i, fm in enumerate((f2, f2, f2, f2, f4, f4, f4, f4)):
-            # thành phần i%4==0: LL ≡ full feature map trước khi tách (thông tin low-freq tổng thể);
-            # i%4∈{1,2,3}: LH/HL/HH từ Haar DWT level-1
-            sub = fm if i % 4 == 0 else haar_dwt2(fm)[i % 4]
-            feats.append(self.pool(self.proj[i](sub)).flatten(1))  # (B, F)
+        for stage_idx, fm in enumerate((f2, f4)):
+            comps = [fm]  # LL
+            if self.detail_mode == "conv":
+                comps += [self.detail_conv[stage_idx * 3 + d](fm) for d in range(3)]
+            else:
+                comps += list(haar_dwt2(fm)[1:])
+            for c in comps:
+                feats.append(self.pool(self.proj[len(feats)](c)).flatten(1))
+        return feats
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        f2, f4 = self._backbone_feats(x)
+        feats = self._component_feats(f2, f4)
         stack = torch.stack(feats, dim=1)                          # (B, 8, F)
         if self.fixed_fusion:
             w = torch.softmax(self.fixed_logits, dim=0)
@@ -271,14 +289,8 @@ class ASFResNet18(nn.Module):
         was_training = self.training
         self.eval()
         with torch.no_grad():
-            h = self.stem(x)
-            h1 = self.layer1(h)
-            f2 = self.layer2(h1)
-            f4 = self.layer4(self.layer3(f2))
-            feats = []
-            for i, fm in enumerate((f2, f2, f2, f2, f4, f4, f4, f4)):
-                sub = fm if i % 4 == 0 else haar_dwt2(fm)[i % 4]
-                feats.append(self.pool(self.proj[i](sub)).flatten(1))
+            f2, f4 = self._backbone_feats(x)
+            feats = self._component_feats(f2, f4)
             w = torch.softmax(self.gate(torch.stack(feats, 1).flatten(1)), -1)
         if was_training:
             self.train()

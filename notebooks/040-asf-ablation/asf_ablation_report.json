@@ -1,0 +1,208 @@
+{
+ "run_id": "040-asf-ablation-screen-v1",
+ "smoke": true,
+ "device": "cpu",
+ "seed": 0,
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "screening_epochs": 1,
+ "note": "SCREENING — final ở 060; đối chứng ResNet18 gốc (A0) = B1 ở 030",
+ "results": [
+  {
+   "variant": "A1_wavelet_fixed",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": true,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11595381,
+    "trainable": 11595381
+   },
+   "best_val_acc": 0.2333,
+   "best_val_macro_f1": 0.1333,
+   "sec_per_epoch": [
+    12.21
+   ],
+   "train_time_sec": 13.7,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": null,
+   "checkpoint": "ckpt_A1_wavelet_fixed.pt"
+  },
+  {
+   "variant": "A2_wavelet_adaptive",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11603573,
+    "trainable": 11603573
+   },
+   "best_val_acc": 0.0667,
+   "best_val_macro_f1": 0.0519,
+   "sec_per_epoch": [
+    11.2
+   ],
+   "train_time_sec": 12.0,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1165,
+     0.1422,
+     0.1278,
+     0.1197,
+     0.1312,
+     0.1288,
+     0.1338,
+     0.0999
+    ],
+    "gate_std_across_images": [
+     0.00393,
+     0.00575,
+     0.00466,
+     0.00603,
+     0.00429,
+     0.00387,
+     0.00401,
+     0.00513
+    ],
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_A2_wavelet_adaptive.pt"
+  },
+  {
+   "variant": "A2_conv_spatial",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "conv",
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11620853,
+    "trainable": 11620853
+   },
+   "best_val_acc": 0.2333,
+   "best_val_macro_f1": 0.1475,
+   "sec_per_epoch": [
+    17.47
+   ],
+   "train_time_sec": 18.4,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1556,
+     0.1147,
+     0.1022,
+     0.1179,
+     0.124,
+     0.1061,
+     0.1434,
+     0.136
+    ],
+    "gate_std_across_images": [
+     0.00893,
+     0.00559,
+     0.00362,
+     0.00671,
+     0.00707,
+     0.00626,
+     0.00867,
+     0.00776
+    ],
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_A2_conv_spatial.pt"
+  }
+ ]
+}

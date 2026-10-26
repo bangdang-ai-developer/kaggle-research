@@ -1,0 +1,14 @@
+{
+  "id": "dangbang1/resisc45-screen-baselines",
+  "title": "RESISC45 Screen Baselines B0-B4",
+  "code_file": "notebook.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": ["punfake/resisc45"],
+  "competition_sources": [],
+  "kernel_sources": ["dangbang1/resisc45-data-audit-split-manifest"]
+}
