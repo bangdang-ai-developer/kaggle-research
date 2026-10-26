@@ -1,5 +1,8 @@
 run_id,kernel,model,config_key,seed,stage,status,submitted_at,gpu_hours_est,val_macro_f1,notes
-010-local-smoke,010-data-audit,-,-,-,audit,succeeded_local,2026-10-26,0,,"SMOKE 300 ảnh: 0 decode lỗi, 0 dup trong sample, split 45/6/9 mỗi lớp PASS, leakage check PASS; fixed popcount LUT (unpackbits ~8GB OOM ở full)"
-020-local-smoke,020-pilot,-,-,-,pilot,succeeded_local,2026-10-26,0,,"CPU CPU smoke PASS 5/5 checks: ASF init Δ=0, gate var>0, CMP margin -0.24 đúng chiều, latency OK; fixed: make_loaders truyền train+val, ConvNeXt_Tiny_Weights, NUM_WORKERS=0 darwin, init-check so resnet18 fresh"
-pending,010-data-audit,full,-,-,audit,not_submitted,,,,
+010-local-smoke,010-data-audit,-,-,-,audit,succeeded_local,2026-10-26,0,,"SMOKE PASS: mutual-NN self-test PASS, leakage PASS; popcount LUT block-wise (<400MB/block)"
+010-k8s-v1,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: papermill 'No kernel name found' — notebook thiếu kernelspec. Fixed nbmake.py"
+010-k8s-v2,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: FAIL-FAST dataset root — /kaggle/input rỗng đối với path cũ; id/slug lệch trước đó cũng đã sửa"
+010-k8s-v3,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: diagnostics cho thấy Kaggle mount /kaggle/input/datasets/<owner>/<slug> — đổi sang glob recursive"
+010-k8s-v4,010-data-audit,-,-,-,audit,running,2026-10-26,0,,"RUNNING sau fix glob; chờ complete (~20-30')"
+020-local-smoke,020-pilot,B1+ASF+CMP,-,-,pilot,succeeded_local,2026-10-26,0,,"PASS 8/8: ASF grad mechanics (gate step0=0, step2>0, Δw>0), margin targeting chính xác -m·w, proto/embed grads, val 0.67s/30 ảnh, ckpt 42.8MB"
 pending,020-pilot,B1+ASF+CMP,-,-,pilot,not_submitted,,,,requires 010 complete (kernel_sources)

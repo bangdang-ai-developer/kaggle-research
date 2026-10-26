@@ -17,6 +17,16 @@
 
 **Bug đã sửa trong quá trình smoke:** (1) unpackbits OOM; (2) `make_loaders` nhận nhầm train-only → val rỗng; (3) `ConvNeXt_Tiny_Weights` tên enum; (4) DataLoader worker crash macOS → NUM_WORKERS=0 darwin / 4 linux; (5) init-check so nhầm resnet18 đã train (BN stats) → so fresh.
 
-**Bước tiếp:** push 010 lên Kaggle (chờ xác nhận user vì push chưa allow), poll → pull artifacts audit FULL (31.500 ảnh) → push 020 (cần output 010) → chốt compute_budget từ số đo T4 thật.
+**Bước tiếp:** chờ 010 complete trên Kaggle → pull artifacts full audit → kiểm tra (decode lỗi, exact/near dup, nhóm, split, checksum) → review PNG near-dup → push 020 (đã được xác nhận) → chốt compute_budget từ số đo T4.
 
-**Chưa có / cần:** số dư GPU quota thực tế (không có API — user có thể xem web UI Kaggle → Settings); xác nhận push.
+## 2026-10-26 — Push 010: 3 lỗi hạ tầng Kaggle đã xác định và sửa
+
+User xác nhận phạm vi: push 010 + 020, theo dõi/pull/kiểm tra; giữ nguyên permissions; không push kernel huấn luyện.
+
+**Lỗi lần 1** `No kernel name found`: papermill Kaggle cần `kernelspec` trong notebook metadata — nbmake.py không emit. **Fix:** nbmake.py thêm kernelspec python3 (áp dụng mọi notebook sau).
+**Lỗi lần 2** `FAIL-FAST dataset root`: dataset không thấy ở path cũ. Diagnostics (lần 3) cho thấy **Kaggle 2026 mount dataset ở `/kaggle/input/datasets/<owner>/<slug>/`** thay vì `/kaggle/input/<slug>/`. **Fix:** resolve bằng `glob.glob("/kaggle/input/**/NWPU-RESISC45", recursive=True)` — không phụ thuộc layout mount. Thêm diagnostics in listing vào assert khi fail.
+**Lỗi metadata:** Kaggle lấy slug kernel từ **title** (`resisc45-data-audit-split-manifest`), không theo `id` trong metadata — đã đổi id khớp slug thật (cả kernel_sources của 020).
+
+**Bài học ghi lại:** kernel `complete` ≠ thành công — mọi lần ERROR phải pull log, xác định nguyên nhân trước khi push lại (đã giữ 3 log trong `outputs/resisc45-data-audit-split-manifest/`).
+
+**020 nâng cấp theo yêu cầu review trước push:** (1) ASF gradient mechanics — bằng chứng trên T4: step0 out_proj grad > 0, gate grad = 0 (đúng lý thuyết zero-init), step2 gate grad > 0, trọng số đổi; (2) CMP margin targeting chính xác Δ = −m·w trên negative, Δ = 0 trên nhãn đúng (allclose 1e-6); (3) prototype/embedding/backbone đều nhận gradient; (4) đo thêm chi phí evaluate + checkpoint size + peak memory từng model. Local smoke PASS 8/8.

@@ -45,6 +45,7 @@ assert not (os.path.isdir("/kaggle/input") and SMOKE), "FAIL-FAST: đang trên K
 import json
 import sys
 import time
+from collections.abc import Iterator
 
 import numpy as np
 import pandas as pd
@@ -160,19 +161,20 @@ POPCOUNT = np.array([bin(i).count("1") for i in range(256)], dtype=np.uint8)
 SELF_DIST = np.int16(999)
 
 
-def pairwise_hamming_block(packed: np.ndarray, block: int = PW_BLOCK) -> np.ndarray:
-    """Generator khoảng cách Hamming theo block (B, N) — KHÔNG materialize N×N.
-    Peak bộ nhớ: xor (B, N, 8) uint8 + popcount block uint8 + dist (B, N) int16."""
+def pairwise_hamming_block(packed: np.ndarray, block: int = PW_BLOCK) -> Iterator[tuple[int, np.ndarray]]:
+    """Generator (offset, dist) — dist shape (B, N) theo block, KHÔNG materialize N×N.
+    Peak bộ nhớ: xor (B, N, 8) uint8 + popcount block uint8 + dist (B, N) int16.
+    YIELD (offset_hàng_toàn_cục, dist) — offset là chỉ số hàng của hàng đầu block."""
     n = len(packed)
     for s in range(0, n, block):
         e = min(s + block, n)
         xor = np.bitwise_xor(packed[s:e, None, :], packed[None, :, :])
         dist = POPCOUNT[xor].sum(axis=2).astype(np.int16)
         dist[np.arange(e - s), np.arange(s, e)] = SELF_DIST  # loại khoảng cách với chính nó
-        yield dist
+        yield s, dist
 
 
-def mutual_near_pairs(packed: np.ndarray, threshold: int) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
+def mutual_near_pairs(packed: np.ndarray, threshold: int, block: int = PW_BLOCK) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
     """MỘT pass block (B, N): gom candidate (mọi cặp ≤ threshold, chỉ lưu list nhỏ) + NN toàn cục
     best_j của từng ảnh. Mutual = (i,j) ≤ threshold ∧ best_j[i]==j ∧ best_j[j]==i — chỉ mức này
     dùng để GỘP nhóm, tránh nối chuỗi A~B~C thành nhóm lớn không hợp lý.
@@ -181,7 +183,7 @@ def mutual_near_pairs(packed: np.ndarray, threshold: int) -> tuple[pd.DataFrame,
     best_j = np.full(n, -1, dtype=np.int64)
     best_d = np.full(n, SELF_DIST, dtype=np.int16)
     recs: list[tuple[int, int, int]] = []
-    for s, dist in enumerate(pairwise_hamming_block(packed)):
+    for s, dist in pairwise_hamming_block(packed, block):
         e = s + len(dist)
         rows = dist.argmin(axis=1)
         rows_d = dist[np.arange(e - s), rows]
@@ -198,26 +200,38 @@ def mutual_near_pairs(packed: np.ndarray, threshold: int) -> tuple[pd.DataFrame,
     mut = [(i, j, d) for i, j, d in cand.itertuples(index=False) if best_j[i] == j and best_j[j] == i]
     return cand, pd.DataFrame(mut, columns=["i", "j", "hamming"]), best_j
 
-# self-test trên dữ liệu tổng hợp TRƯỚC khi tin kết quả thật: 2 cặp mutual + 1 cặp không mutual
+# self-test trên dữ liệu tổng hợp, BAO GỒM multi-block (block=4 < n) — case từng bắt trượt
+# bug offset khi n < 1 block. 2 cặp mutual ở các chunk khác nhau + 1 cặp chỉ candidate.
 _rng_t = np.random.default_rng(0)
-_base = _rng_t.random(64) < 0.5
-_ht = np.zeros((5, 64), dtype=bool)
-_ht[0] = _base
-_ht[1] = _base.copy()
-_ht[1][7] = ~_ht[1][7]                                     # d(0,1)=1 → mutual
-_ht[2] = _rng_t.random(64) < 0.5
-_ht[3] = _ht[2].copy()
-_ht[3][3] = ~_ht[3][3]
-_ht[3][40] = ~_ht[3][40]                                   # d(2,3)=2 → mutual
-_ht[4] = _ht[1].copy()
-for _b in (0, 1, 2):
-    _ht[4][_b] = ~_ht[4][_b]                               # d(1,4)=3 → candidate nhưng NN(1)=0 → KHÔNG mutual
+_ht = np.zeros((10, 64), dtype=bool)
+_ht[0] = _rng_t.random(64) < 0.5
+_ht[1] = _ht[0].copy()
+_ht[1][7] = ~_ht[1][7]                                     # d(0,1)=1 → mutual, chunk 0
+_ht[5] = _rng_t.random(64) < 0.5
+_ht[7] = _ht[5].copy()
+_ht[7][3] = ~_ht[7][3]
+_ht[7][40] = ~_ht[7][40]                                   # d(5,7)=2 → mutual, chunk 1 (hàng 4..7)
+for _k in (2, 3, 4, 6, 8, 9):                              # các vector còn lại: xa hết
+    _h = _rng_t.random(64) < 0.5
+    while min(int((_h != _ht[m]).sum()) for m in range(_k)) < 10:
+        _h = _rng_t.random(64) < 0.5
+    _ht[_k] = _h
 _packed_test = np.packbits(_ht, axis=1)
-_cand_t, _mut_t, _bj_t = mutual_near_pairs(_packed_test, threshold=3)
-assert sorted(map(tuple, _cand_t[["i", "j"]].values)) == [(0, 1), (1, 4), (2, 3)], f"test candidate fail:\n{_cand_t}"
-assert sorted(map(tuple, _mut_t[["i", "j"]].values)) == [(0, 1), (2, 3)], f"test mutual fail:\n{_mut_t}"
-assert _bj_t[4] == 1 and _bj_t[1] == 0, f"test NN fail: {_bj_t}"
-print("self-test mutual_near_pairs: PASS (mutual đúng 2 cặp; cặp (1,4) chỉ là candidate, không gộp)")
+_cand_t, _mut_t, _bj_t = mutual_near_pairs(_packed_test, threshold=3, block=4)
+assert sorted(map(tuple, _cand_t[["i", "j"]].values)) == [(0, 1), (5, 7)], f"test candidate fail:\n{_cand_t}"
+assert sorted(map(tuple, _mut_t[["i", "j"]].values)) == [(0, 1), (5, 7)], f"test mutual fail:\n{_mut_t}"
+assert _bj_t[0] == 1 and _bj_t[1] == 0 and _bj_t[5] == 7 and _bj_t[7] == 5, f"test NN fail: {_bj_t}"
+# + case 1-chunk: mutual đúng, candidate-only không gộp
+_base = _ht[0]
+_h1 = _base.copy()
+_h1[9] = ~_h1[9]                                           # d(0,1)=1
+_h2 = _h1.copy()
+for _b in (0, 1, 2):
+    _h2[_b] = ~_h2[_b]                                     # d(1,2)=3 → candidate, NN(1)=0 → không mutual
+_ht2 = np.stack([_base, _h1, _h2])
+_cand_2, _mut_2, _bj_2 = mutual_near_pairs(np.packbits(_ht2, axis=1), threshold=3, block=4)
+assert sorted(map(tuple, _cand_2[["i", "j"]].values)) == [(0, 1), (1, 2)] and sorted(map(tuple, _mut_2[["i", "j"]].values)) == [(0, 1)]
+print("self-test mutual_near_pairs: PASS cả multi-block (chunk 0 và 1) và 1-chunk; candidate-only không gộp")
 
 t0 = time.time()
 paths = [os.path.join(DATA_ROOT, r.class_name, os.path.basename(r.image_id)) for r in df.itertuples()]
