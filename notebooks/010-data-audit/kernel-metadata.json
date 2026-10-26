@@ -1,5 +1,5 @@
 {
-  "id": "dangbang1/resisc45-data-audit",
+  "id": "dangbang1/resisc45-data-audit-split-manifest",
   "title": "RESISC45 Data Audit + Split Manifest",
   "code_file": "notebook.ipynb",
   "language": "python",

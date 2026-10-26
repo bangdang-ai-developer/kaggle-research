@@ -20,11 +20,19 @@
  "exact_dup_cross_class_groups": 0,
  "neardup_hamming_max": 6,
  "neardup_candidate_pairs": 0,
- "neardup_same_class_pairs": 0,
- "neardup_cross_class_pairs": 0,
+ "neardup_candidate_same_class": 0,
+ "neardup_candidate_cross_class": 0,
+ "neardup_mutual_pairs": 0,
+ "neardup_mutual_same_class": 0,
+ "neardup_mutual_cross_class": 0,
+ "merge_policy": "exact md5 (auto) + mutual-NN hamming<=6; candidate chi report",
+ "groups_needing_manual_verification": 0,
  "dup_groups_total": 300,
+ "largest_group_size": 1,
+ "largest_group_kind": "single",
+ "cross_class_groups": 0,
  "split_seed": 42,
- "split_sha256": "d2cc4dd9eb852a9aa788edab3ff9293052e9a4062eba427bc06ee4105a8b5534",
+ "split_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
  "split_counts": {
   "train": 225,
   "val": 30,
@@ -35,5 +43,5 @@
   "val": 6,
   "test": 9
  },
- "elapsed_sec": 10.0
+ "elapsed_sec": 0.4
 }

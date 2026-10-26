@@ -42,26 +42,31 @@ if device == "cuda":
 
 def find_single(pattern_list: list[str], desc: str) -> str:
     for pat in pattern_list:
-        hits = sorted(glob.glob(pat))
+        hits = sorted(glob.glob(pat, recursive=True))
         if hits:
             return hits[0]
     raise AssertionError(f"FAIL-FAST: khong tim thay {desc}: {pattern_list}")
 
 manifest_path = find_single(
-    ["/kaggle/input/resisc45-data-audit/split_manifest.csv",
+    ["/kaggle/input/**/split_manifest.csv",           # Kaggle mount layout bất kỳ tầng nào
      "../../notebooks/010-data-audit/split_manifest.smoke.csv",
      "split_manifest.smoke.csv"],
     "split manifest")
-DATA_ROOT = find_single(
-    ["/kaggle/input/resisc45/NWPU-RESISC45",
-     "../../data/raw/punfake---resisc45/NWPU-RESISC45"],
-    "dataset root")
+DATA_ROOT = None
+for hit in sorted(glob.glob("/kaggle/input/**/NWPU-RESISC45", recursive=True)) + [
+        "../../data/raw/punfake---resisc45/NWPU-RESISC45"]:
+    nsub = len([d for d in os.listdir(hit) if os.path.isdir(os.path.join(hit, d))])
+    if nsub >= 40:
+        DATA_ROOT = hit
+        break
+assert DATA_ROOT, f"FAIL-FAST: khong tim thay dataset root; /kaggle/input = {os.listdir('/kaggle/input') if os.path.isdir('/kaggle/input') else 'KHONG TON TAI'}"
 manifest = pd.read_csv(manifest_path)
 manifest = manifest[manifest.split != "test"].reset_index(drop=True)  # pilot: KHÔNG test
+assert manifest.split.eq("test").sum() == 0, "FAIL-FAST: pilot không được động tới test"
 print("manifest:", manifest_path, "| rows (train+val):", len(manifest))
 print("DATA_ROOT:", DATA_ROOT)
 audit_path = find_single(
-    ["/kaggle/input/resisc45-data-audit/audit_report.json",
+    ["/kaggle/input/**/audit_report.json",
      "../../notebooks/010-data-audit/audit_report.smoke.json"],
     "audit report")
 with open(audit_path) as f:
@@ -87,7 +92,7 @@ t_loader = (time.time() - t0) / 8
 print(f"data loader: {t_loader:.3f}s/batch (128 ảnh) | train imgs: {len(dl_tr.dataset)} | val: {len(dl_va.dataset)}")
 
 # %%
-# ---- B1 ResNet18: 2 epoch FULL train/val — đo s/epoch + memory ----
+# ---- B1 ResNet18: 2 epoch FULL train/val — đo s/epoch + memory + chi phí val/checkpoint ----
 set_seed(SEED)
 cfg_b1 = TrainConfig(model_key="resnet18", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_FULL)
 b1 = build_model(cfg_b1)
@@ -95,11 +100,17 @@ params_b1 = count_params(b1)
 torch.cuda.reset_peak_memory_stats() if device == "cuda" else None
 b1, hist_b1 = train_model(b1, cfg_b1, dl_tr, dl_va, device)
 peak_mem = torch.cuda.max_memory_allocated() / 2**30 if device == "cuda" else None
+t0 = time.time()
 m_b1 = evaluate(b1, dl_va, device)
+val_eval_sec = time.time() - t0
 lat_b1 = measure_latency(b1, device, n_iter=10 if device == "cpu" else 50)
+ckpt_path = "ckpt_b1_pilot.pt"
+torch.save({"state_dict": b1.state_dict(), "config": cfg_b1.to_dict()}, ckpt_path)
+ckpt_mb = os.path.getsize(ckpt_path) / 2**20
 print("B1 params:", params_b1, "| val:", {k: m_b1[k] for k in ("acc", "macro_f1")},
       "| sec/epoch:", [h["epoch_sec"] for h in hist_b1["history"]], "| peak mem GiB:", peak_mem,
       "| latency:", lat_b1)
+print(f"val evaluate: {val_eval_sec:.2f}s / {len(dl_va.dataset)} ảnh | checkpoint: {ckpt_mb:.1f} MB")
 
 # %%
 # ---- ASF: kiểm khởi tạo ≡ ResNet18 + forward/backward + subset epoch ----
@@ -128,39 +139,90 @@ dl_sub = torch.utils.data.DataLoader(ResiscDataset(sub_train, DATA_ROOT, True, c
                                      batch_size=128, shuffle=True, num_workers=NUM_WORKERS)
 set_seed(SEED)
 asf = build_model(cfg_asf)
+torch.cuda.reset_peak_memory_stats() if device == "cuda" else None
 asf, hist_asf = train_model(asf, cfg_asf, dl_sub, dl_va, device)
+peak_mem_asf = torch.cuda.max_memory_allocated() / 2**30 if device == "cuda" else None
 lat_asf = measure_latency(asf, device, n_iter=10 if device == "cpu" else 50)
 print("ASF params:", params_asf, "| subset epoch sec:", [h["epoch_sec"] for h in hist_asf["history"]],
-      "| val:", hist_asf.get("best_val_macro_f1"), "| latency:", lat_asf)
+      "| val:", hist_asf.get("best_val_macro_f1"), "| latency:", lat_asf, "| peak mem GiB:", peak_mem_asf)
 
 # %%
-# ---- CMP: forward/backward + margin chiều đúng + subset epoch ----
+# ---- ASF gradient mechanics: nhánh residual có được học không? ----
+# Lý thuyết: zero-init out_proj ⇒ step 0: grad(out_proj) ≠ 0 (nhánh nhận gradient), grad(gate) = 0
+# (chuỗi đạo hàm qua W_out=0). Sau ≥1 optimizer step, W_out ≠ 0 ⇒ grad(gate) > 0.
+# Kiểm chứng 3 steps, kiểm tra finite + trọng số thật sự thay đổi.
+set_seed(SEED)
+asf_g = build_model(TrainConfig(model_key="asf", num_classes=45, seed=SEED)).to(device)
+opt_g = torch.optim.AdamW(_param_groups(asf_g, TrainConfig(num_classes=45)), lr=1e-3)
+crit_g = torch.nn.CrossEntropyLoss()
+w0 = asf_g.out_proj.weight.detach().clone()
+grad_hist = []
+for step in range(3):
+    opt_g.zero_grad(set_to_none=True)
+    logits = asf_g(xb.to(device))
+    loss = crit_g(logits, yb.to(device))
+    loss.backward()
+    g_out = float(asf_g.out_proj.weight.grad.abs().sum())
+    g_gate = float(asf_g.gate.weight.grad.abs().sum())
+    finite = bool(all(torch.isfinite(p.grad).all().item() for p in asf_g.parameters() if p.grad is not None))
+    grad_hist.append({"step": step, "out_proj_grad": g_out, "gate_grad": g_gate, "all_finite": finite})
+    opt_g.step()
+dw = float((asf_g.out_proj.weight - w0).abs().sum())
+asf_grad_ok = (grad_hist[0]["out_proj_grad"] > 0 and grad_hist[0]["gate_grad"] == 0.0
+               and grad_hist[-1]["gate_grad"] > 0 and all(h["all_finite"] for h in grad_hist) and dw > 0)
+for h in grad_hist:
+    print(h)
+print(f"out_proj weight Δ sau 3 steps: {dw:.3e} (nhánh residual thực sự cập nhật)")
+print("ASF GRADIENT MECHANICS:", "PASS" if asf_grad_ok else "FAIL")
+
+# %%
+# ---- CMP: forward/backward + margin targeting + gradient prototype/embed + subset epoch ----
 set_seed(SEED)
 w_fake = np.zeros((45, 45), dtype=np.float32)
-w_fake[0, 40] = 0.8  # giả lập cặp dễ nhầm (chỉ để test cơ chế margin)
+w_fake[0, 40] = 0.8   # cặp dễ nhầm giả lập (0→40): chỉ để test cơ chế margin
+w_fake[3, 7] = 0.5    # thêm cặp thứ hai để kiểm targeting theo hàng
 cfg_cmp = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_SUB, cmp_n_proto=2, cmp_confusion=True)
 cmp_model = build_model(cfg_cmp)
 cmp_model.set_confusion(w_fake)
 params_cmp = count_params(cmp_model)
-# margin chiều đúng: ảnh label=0 → logit class 40 phải giảm khi apply margin
+# (a) margin targeting: Δlogit[i, c] = −m·w[label_i, c] — đúng negative, KHÔNG đụng nhãn đúng
 cmp_model.eval()
 with torch.no_grad():
-    e = cmp_model.embeddings(xb[:8].to(device))
-    y_test = torch.zeros(8, dtype=torch.long)
-    l_margin = cmp_model.logits_from_emb(e, apply_margin=True, labels=y_test)
-    l_plain = cmp_model.logits_from_emb(e, apply_margin=False, labels=y_test)
-delta_40 = float((l_margin[:, 40] - l_plain[:, 40]).mean())
-print(f"CMP margin Δlogit[class40, label0] = {delta_40:.4f} (mong đợi < 0 = −0.3·0.8·?)")
-print("CMP params:", params_cmp)
-# subset epoch (không confusion — graph chỉ đo mini ở cell sau)
+    e_t = cmp_model.embeddings(xb[:8].to(device))
+    y_mix = torch.tensor([0, 1, 0, 3, 1, 3, 0, 1])  # trộn nhiều nhãn
+    l_m = cmp_model.logits_from_emb(e_t, apply_margin=True, labels=y_mix)
+    l_p = cmp_model.logits_from_emb(e_t, apply_margin=False, labels=y_mix)
+delta = (l_m - l_p)
+exp_delta = -(cmp_model.conf_margin * cmp_model.conf_w[y_mix]) * (1.0 - torch.nn.functional.one_hot(y_mix, 45).float())
+margin_targeting_ok = bool(torch.allclose(delta, exp_delta, atol=1e-6))
+delta_label0_40 = float(delta[y_mix == 0][:, 40].mean())
+delta_on_label = float(delta[torch.arange(8), y_mix].abs().max())
+print("CMP margin targeting (Δ == −m·w trên negative, Δ[label]=0):", "PASS" if margin_targeting_ok else "FAIL")
+print(f"  Δlogit[40 | label 0] = {delta_label0_40:.4f} (mong đợi −0.24) | |Δ| trên nhãn đúng max = {delta_on_label:.1e}")
+# (b) gradient prototype + embedding nhận được
+cfg_grad = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, cmp_n_proto=2, cmp_confusion=True)
+cmp_grad = build_model(cfg_grad)
+cmp_grad.set_confusion(w_fake)
+cmp_grad.train()
+loss_g = torch.nn.CrossEntropyLoss()(cmp_grad(xb[:16].to(device), yb[:16].to(device)), yb[:16].to(device))
+loss_g.backward()
+g_proto = float(cmp_grad.prototypes.grad.abs().sum())
+g_embed = float(cmp_grad.embed.weight.grad.abs().sum())
+g_bb = float(sum(p.grad.abs().sum().item() for p in cmp_grad.backbone.parameters() if p.grad is not None))
+cmp_proto_embed_grad_ok = g_proto > 0 and g_embed > 0 and g_bb > 0
+print(f"CMP grads: prototypes={g_proto:.3e} embed={g_embed:.3e} backbone(sum)={g_bb:.3e} →",
+      "PASS" if cmp_proto_embed_grad_ok else "FAIL")
+# (c) subset epoch (không confusion — graph chỉ đo mini ở cell sau)
 cfg_cmp_train = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_SUB, cmp_n_proto=2)
 set_seed(SEED)
 cmp_model = build_model(cfg_cmp_train)
+torch.cuda.reset_peak_memory_stats() if device == "cuda" else None
 cmp_model, hist_cmp = train_model(cmp_model, cfg_cmp_train, dl_sub, dl_va, device)
+peak_mem_cmp = torch.cuda.max_memory_allocated() / 2**30 if device == "cuda" else None
 usage = cmp_model.prototype_usage(dl_sub, device, max_batches=3)
 lat_cmp = measure_latency(cmp_model, device, n_iter=10 if device == "cpu" else 50)
 print("CMP subset epoch sec:", [h["epoch_sec"] for h in hist_cmp["history"]], "| val F1:", hist_cmp.get("best_val_macro_f1"))
-print("prototype usage:", usage, "| latency:", lat_cmp)
+print("prototype usage:", usage, "| latency:", lat_cmp, "| peak mem GiB:", peak_mem_cmp)
 
 # %%
 # ---- Đo mini confusion graph (chỉ đo THỜI GIAN, không dùng graph này cho final) ----
@@ -190,13 +252,20 @@ report = {
     "audit_smoke": audit["smoke"],
     "resnet18_full": {"params": params_b1, "sec_per_epoch": [h["epoch_sec"] for h in hist_b1["history"]],
                       "train_time_sec": hist_b1["train_time_sec"], "val": {k: m_b1[k] for k in ("acc", "macro_f1")},
-                      "peak_mem_gib": peak_mem},
+                      "peak_mem_gib": peak_mem, "val_eval_sec": round(val_eval_sec, 2),
+                      "checkpoint_mb": round(ckpt_mb, 1)},
     "asf": {"params": params_asf, "init_max_logit_diff": init_diff, "gate_var": gate_spread,
             "subset_epoch_sec": [h["epoch_sec"] for h in hist_asf["history"]],
-            "best_val_macro_f1_subset": hist_asf.get("best_val_macro_f1")},
-    "cmp": {"params": params_cmp, "margin_delta_logit": delta_40,
+            "best_val_macro_f1_subset": hist_asf.get("best_val_macro_f1"),
+            "peak_mem_gib": peak_mem_asf, "gradient_mechanics": grad_hist, "out_proj_weight_delta_3steps": dw,
+            "gradient_mechanics_ok": bool(asf_grad_ok)},
+    "cmp": {"params": params_cmp, "margin_targeting_ok": bool(margin_targeting_ok),
+            "delta_logit_40_label0": delta_label0_40, "delta_on_true_label_max": delta_on_label,
+            "grads": {"prototypes": g_proto, "embed": g_embed, "backbone_sum": g_bb},
+            "grad_ok": bool(cmp_proto_embed_grad_ok),
             "subset_epoch_sec": [h["epoch_sec"] for h in hist_cmp["history"]],
-            "best_val_macro_f1_subset": hist_cmp.get("best_val_macro_f1"), "prototype_usage": usage},
+            "best_val_macro_f1_subset": hist_cmp.get("best_val_macro_f1"), "prototype_usage": usage,
+            "peak_mem_gib": peak_mem_cmp},
     "graph": {"mini_time_sec": round(graph_time, 1), "info": graph_info},
     "latency_batch1": lats,
     "loader_sec_per_batch128": round(t_loader, 4),
@@ -217,6 +286,11 @@ check("B1 epoch hợp lý (< 900s)", all(h["epoch_sec"] < 900 for h in hist_b1["
       f"{[h['epoch_sec'] for h in hist_b1['history']]}")
 check("ASF init ≡ ResNet18", init_diff < 1e-3, f"max|Δ|={init_diff:.2e}")
 check("gate có hoạt động (var > 0)", gate_spread > 0 or cfg_asf.asf_fixed_fusion, f"{gate_spread:.2e}")
-check("CMP margin âm", delta_40 < 0, f"{delta_40:.3f}")
+check("ASF nhánh residual học được (grad đúng lý thuyết + finite + weight đổi)", bool(asf_grad_ok),
+      f"step0: out={grad_hist[0]['out_proj_grad']:.2e} gate={grad_hist[0]['gate_grad']:.2e}; step2 gate={grad_hist[-1]['gate_grad']:.2e}; Δw={dw:.2e}")
+check("CMP margin targeting đúng negative", bool(margin_targeting_ok), f"Δ[label0→40]={delta_label0_40:.4f}")
+check("CMP prototype/embed/backbone có grad", bool(cmp_proto_embed_grad_ok),
+      f"proto={g_proto:.2e} embed={g_embed:.2e}")
 check("latency đo được mọi model", all(v["median_ms"] > 0 for v in lats.values()))
+check("chi phí val/checkpoint đo được", val_eval_sec > 0 and ckpt_mb > 0, f"{val_eval_sec:.2f}s / {ckpt_mb:.1f}MB")
 print("PILOT", "PASS — dùng số liệu chốt compute_budget.md" if ok else "CÓ FAIL — sửa trước khi sang giai đoạn C")

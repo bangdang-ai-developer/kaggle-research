@@ -10,5 +10,5 @@
   "enable_internet": "true",
   "dataset_sources": ["punfake/resisc45"],
   "competition_sources": [],
-  "kernel_sources": ["dangbang1/resisc45-data-audit"]
+  "kernel_sources": ["dangbang1/resisc45-data-audit-split-manifest"]
 }

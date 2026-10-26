@@ -57,6 +57,9 @@ def main() -> None:
     if not nb_py.exists():
         sys.exit(f"nbmake: {nb_py} not found")
     nb = nbf.v4.new_notebook()
+    # Kaggle papermill bắt buộc kernelspec ("No kernel name found" nếu thiếu)
+    nb.metadata["kernelspec"] = {"display_name": "Python 3", "language": "python", "name": "python3"}
+    nb.metadata["language_info"] = {"name": "python"}
     nb.cells = [nbf.v4.new_markdown_cell(s) if k == "markdown" else nbf.v4.new_code_cell(s) for k, s in parse(nb_py)]
     out = slug_dir / "notebook.ipynb"
     nbf.write(nb, out)
