@@ -5,6 +5,7 @@ run_id,kernel,model,config_key,seed,stage,status,submitted_at,gpu_hours_est,val_
 010-k8s-v3,010-data-audit,-,-,-,audit,failed,2026-10-26,0,,"ERROR: diagnostics → Kaggle mount /kaggle/input/datasets/<owner>/<slug>; đổi glob recursive"
 010-k8s-v4,010-data-audit,-,-,-,audit,complete_results_rejected,2026-10-26,0,,"COMPLETE 424s nhưng pairwise chunk-offset bug (s=chunk index) → near-dup CSV sai; exact-dup+split vẫn valid; phát hiện qua cross-check local"
 010-k8s-v5,010-data-audit,-,-,-,audit,superseded_running,2026-10-26,0,,"Fix offset + self-test multi-block, nhưng bị I/O chậm bất thường (>35' ở cell decode vs 108s của v4); CLI không hủy được — để tự kết thúc; v6 thay"
-010-k8s-v6,010-data-audit,-,-,-,audit,running,2026-10-26,0,,"Single-pass I/O (đọc 1 lần ~430MB RAM, verify+MD5+dHash cùng lúc); CPU; self-test multi-block PASS; local verify: 20 candidates/16 mutual/8 exact nhóm"
+010-k8s-v6,010-data-audit,-,-,-,audit,superseded_running,2026-10-26,0,,"Single-pass I/O; không có progress log (push trước khi thêm logging); user yêu cầu v7 thay"
+010-k8s-v7,010-data-audit,-,-,-,audit,running,2026-10-26,0,,"= v6 + progress logging (single-pass mỗi 2k ảnh, dHash mỗi 5k, pairwise mỗi 8 block, split mỗi 10 lớp; flush live-view); xem live: web UI View Log"
 020-local-smoke,020-pilot,B1+ASF+CMP,-,-,pilot,succeeded_local,2026-10-26,0,,"PASS 8/8: ASF grad mechanics, margin targeting -m·w chính xác, proto/embed grads, val cost + ckpt size đo được"
 pending,020-pilot,B1+ASF+CMP,-,-,pilot,not_submitted,,,,requires 010 v6 complete; GPU T4x2 (API default), internet on cho pretrained weights

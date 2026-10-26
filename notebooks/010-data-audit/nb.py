@@ -405,36 +405,76 @@ if len(oversize):
     print("CẢNH BÁO nhóm oversize (giữ nguyên, chấp nhận lệch tỉ lệ):")
     print(oversize.drop_duplicates("dup_group")[["class_name", "grp_size"]])
 
-split_of: dict[int, str] = {}
-counts = {}
-_t_split = time.time()
-for _ci, (cls, gdf) in enumerate(unit.groupby("class_name"), start=1):
-    if _ci % 10 == 0 or _ci == 45:
-        print(f"[progress] split lớp {_ci}/45 ({cls}) | {time.time()-_t_split:.0f}s", flush=True)
-    grps = sorted(gdf.dup_group.unique())
-    rng.shuffle(grps)
-    total = len(gdf)
-    n_train, n_val = int(round(total * SPLIT_RATIOS[0])), int(round(total * SPLIT_RATIOS[1]))
-    c_train = c_val = c_test = 0
-    for g in grps:
-        gs = int(unit.loc[unit.dup_group == g, "grp_size"].iloc[0])
-        # gán vào split còn thiếu nhiều nhất (theo tỉ lệ đã normalize về số ảnh)
-        need = [(n_train - c_train, "train"), (n_val - c_val, "val"), (total * SPLIT_RATIOS[2] - c_test, "test")]
-        need.sort(key=lambda t: -t[0])
-        split_of[g] = need[0][1]
-        if need[0][1] == "train":
-            c_train += gs
-        elif need[0][1] == "val":
-            c_val += gs
-        else:
-            c_test += gs
-    counts[cls] = (c_train, c_val, c_test)
+def assign_splits(unit: pd.DataFrame, rng: np.random.Generator) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Chia split 75/10/15: nhóm same-class → stratified per class (deficit-fill);
+    nhóm ĐA LỚP (mutual near-dup bắt chéo lớp) → gán nguyên nhóm MỘT split theo deficit
+    tổng toàn cục — ưu tiên chống leakage, chấp nhận lệch per-class nhẹ (được báo cáo).
+    Trả về (unit + cột split, counts_df)."""
+    split_of: dict[int, str] = {}
+    SPLITS = ("train", "val", "test")
+    counts = {}
+    for cls, gdf in unit.groupby("class_name"):
+        grps = sorted(gdf.dup_group.unique())
+        rng.shuffle(grps)
+        total = len(gdf)
+        n_train, n_val = int(round(total * SPLIT_RATIOS[0])), int(round(total * SPLIT_RATIOS[1]))
+        c_train = c_val = c_test = 0
+        for g in grps:
+            rows_g = unit[unit.dup_group == g]
+            if rows_g.class_name.nunique() > 1:
+                continue  # nhóm đa lớp → gán một lần ở bước global (tránh ghi đè split_of)
+            gs = int(rows_g.grp_size.iloc[0])
+            need = [(n_train - c_train, "train"), (n_val - c_val, "val"), (total * SPLIT_RATIOS[2] - c_test, "test")]
+            need.sort(key=lambda t: -t[0])
+            split_of[g] = need[0][1]
+            if need[0][1] == "train":
+                c_train += gs
+            elif need[0][1] == "val":
+                c_val += gs
+            else:
+                c_test += gs
+        counts[cls] = [c_train, c_val, c_test]
 
-unit["split"] = unit.dup_group.map(split_of)
-counts_df = pd.DataFrame(counts, index=["train", "val", "test"]).T
+    multi_groups = sorted(set(unit.dup_group.unique()) - set(split_of))
+    tot = [sum(counts[c][s] for c in counts) for s in range(3)]
+    _targets = [int(round(len(unit) * r)) for r in SPLIT_RATIOS]
+    if multi_groups:
+        print(f"{len(multi_groups)} nhóm ĐA LỚP — gán split global (per-class lệch nhẹ, ghi nhận trong report):")
+    for g in multi_groups:
+        rows_g = unit[unit.dup_group == g]
+        si = max(range(3), key=lambda s: _targets[s] - tot[s])
+        split_of[g] = SPLITS[si]
+        for cls, n in rows_g.class_name.value_counts().items():
+            counts[cls][si] += int(n)
+        tot[si] += int(len(rows_g))
+        print(f"  dup_group={g} ({len(rows_g)} ảnh: {sorted(rows_g.class_name.unique())}) → {SPLITS[si]}")
+    out = unit.copy()
+    out["split"] = out.dup_group.map(split_of)
+    return out, pd.DataFrame(counts, index=list(SPLITS)).T
+
+# self-test split: nhóm đa lớp phải gán đúng 1 lần, tổng đếm khớp, leakage bằng 0
+_u = pd.DataFrame({
+    "image_id": [f"a{i}" for i in range(10)] + [f"b{i}" for i in range(10)],
+    "class_name": ["A"] * 10 + ["B"] * 10,
+    "dup_group": list(range(10)) + list(range(10, 20)),
+})
+_u.loc[0, "dup_group"] = 99          # nhóm đa lớp: a0 + b0
+_u.loc[10, "dup_group"] = 99
+_u["grp_size"] = _u.groupby("dup_group")["dup_group"].transform("size")
+_u_out, _cdf = assign_splits(_u, np.random.default_rng(0))
+assert _u_out.split.notna().all() and int(_cdf.sum().sum()) == len(_u) == 20, _cdf
+assert _u_out.groupby("dup_group")["split"].nunique().eq(1).all(), "leak trong self-test"
+_g99 = set(_u_out[_u_out.dup_group == 99].split)
+assert len(_g99) == 1, f"nhóm đa lớp trải {_g99} split"
+assert _cdf.loc["A"].sum() == 10 and _cdf.loc["B"].sum() == 10, _cdf   # mọi ảnh của mỗi lớp được đếm đúng 1 lần (index=lớp)
+print("self-test assign_splits: PASS (nhóm đa lớp gán 1 lần, tổng khớp, không leakage)")
+
+_t_split = time.time()
+unit, counts_df = assign_splits(unit, rng)
 print("số ảnh mỗi lớp × split (mẫu 5 lớp đầu):")
 print(counts_df.head())
 print("tổng:", counts_df.sum().to_dict())
+assert int(counts_df.sum().sum()) == len(unit), f"tổng counts {int(counts_df.sum().sum())} != {len(unit)}"
 
 # KIỂM TRA leakage: không dup_group nào xuất hiện ở >1 split
 leak = unit.groupby("dup_group")["split"].nunique()
