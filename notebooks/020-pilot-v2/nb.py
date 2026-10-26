@@ -127,12 +127,12 @@ print(f"val evaluate: {val_eval_sec:.2f}s / {len(dl_va.dataset)} ảnh | checkpo
 # ---- ASF: kiểm khởi tạo ≡ ResNet18 + forward/backward + subset epoch ----
 set_seed(SEED)
 cfg_asf = TrainConfig(model_key="asf", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_SUB)
-asf = build_model(cfg_asf)
+asf = build_model(cfg_asf).to(device)
 params_asf = count_params(asf)
 # (a) zero-init ⇒ đầu ra ≡ ResNet18 fresh: so với ResNet18 CHƯA train (b1 đã train,
 #     BN running stats đổi → không dùng), copy head để khác biệt chỉ còn residual branch
 xb, yb = next(iter(dl_tr))
-ref_fresh = build_model(TrainConfig(model_key="resnet18", num_classes=45, seed=SEED))
+ref_fresh = build_model(TrainConfig(model_key="resnet18", num_classes=45, seed=SEED)).to(device)
 asf.eval(); ref_fresh.eval()
 asf.head.load_state_dict(ref_fresh.fc.state_dict())
 with torch.no_grad():
@@ -149,7 +149,7 @@ sub_train = full_train.groupby("class_name").sample(frac=SUBSET_FRAC, random_sta
 dl_sub = torch.utils.data.DataLoader(ResiscDataset(sub_train, DATA_ROOT, True, cfg_asf.input_size),
                                      batch_size=128, shuffle=True, num_workers=NUM_WORKERS)
 set_seed(SEED)
-asf = build_model(cfg_asf)
+asf = build_model(cfg_asf).to(device)
 torch.cuda.reset_peak_memory_stats() if device == "cuda" else None
 asf, hist_asf = train_model(asf, cfg_asf, dl_sub, dl_va, device)
 peak_mem_asf = torch.cuda.max_memory_allocated() / 2**30 if device == "cuda" else None
@@ -193,7 +193,7 @@ w_fake = np.zeros((45, 45), dtype=np.float32)
 w_fake[0, 40] = 0.8   # cặp dễ nhầm giả lập (0→40): chỉ để test cơ chế margin
 w_fake[3, 7] = 0.5    # thêm cặp thứ hai để kiểm targeting theo hàng
 cfg_cmp = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_SUB, cmp_n_proto=2, cmp_confusion=True)
-cmp_model = build_model(cfg_cmp)
+cmp_model = build_model(cfg_cmp).to(device)
 cmp_model.set_confusion(w_fake)
 params_cmp = count_params(cmp_model)
 # (a) margin targeting: Δlogit[i, c] = −m·w[label_i, c] — đúng negative, KHÔNG đụng nhãn đúng
@@ -212,7 +212,7 @@ print("CMP margin targeting (Δ == −m·w trên negative, Δ[label]=0):", "PASS
 print(f"  Δlogit[40 | label 0] = {delta_label0_40:.4f} (mong đợi −0.24) | |Δ| trên nhãn đúng max = {delta_on_label:.1e}")
 # (b) gradient prototype + embedding nhận được
 cfg_grad = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, cmp_n_proto=2, cmp_confusion=True)
-cmp_grad = build_model(cfg_grad)
+cmp_grad = build_model(cfg_grad).to(device)
 cmp_grad.set_confusion(w_fake)
 cmp_grad.train()
 loss_g = torch.nn.CrossEntropyLoss()(cmp_grad(xb[:16].to(device), yb[:16].to(device)), yb[:16].to(device))
@@ -226,7 +226,7 @@ print(f"CMP grads: prototypes={g_proto:.3e} embed={g_embed:.3e} backbone(sum)={g
 # (c) subset epoch (không confusion — graph chỉ đo mini ở cell sau)
 cfg_cmp_train = TrainConfig(model_key="cmp", num_classes=45, seed=SEED, epochs=PILOT_EPOCHS_SUB, cmp_n_proto=2)
 set_seed(SEED)
-cmp_model = build_model(cfg_cmp_train)
+cmp_model = build_model(cfg_cmp_train).to(device)
 torch.cuda.reset_peak_memory_stats() if device == "cuda" else None
 cmp_model, hist_cmp = train_model(cmp_model, cfg_cmp_train, dl_sub, dl_va, device)
 peak_mem_cmp = torch.cuda.max_memory_allocated() / 2**30 if device == "cuda" else None

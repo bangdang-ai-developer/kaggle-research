@@ -1,0 +1,326 @@
+{
+ "run_id": "020-pilot-v1",
+ "device": "cpu",
+ "gpu": "cpu",
+ "torch": "2.14.1",
+ "cuda": null,
+ "manifest": "split_manifest.smoke.csv",
+ "split_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "audit_smoke": true,
+ "resnet18_full": {
+  "params": {
+   "total": 11199597,
+   "trainable": 11199597
+  },
+  "sec_per_epoch": [
+   14.0,
+   11.55
+  ],
+  "train_time_sec": 27.7,
+  "val": {
+   "acc": 0.36666666666666664,
+   "macro_f1": 0.31226551226551225
+  },
+  "peak_mem_gib": null,
+  "val_eval_sec": 0.63,
+  "checkpoint_mb": 42.8
+ },
+ "asf": {
+  "params": {
+   "total": 11603573,
+   "trainable": 11603573
+  },
+  "init_max_logit_diff": 0.0,
+  "gate_var": 2.391287671343889e-05,
+  "subset_epoch_sec": [
+   2.15
+  ],
+  "best_val_macro_f1_subset": 0.0,
+  "peak_mem_gib": null,
+  "gradient_mechanics": [
+   {
+    "step": 0,
+    "out_proj_grad": 235.5975341796875,
+    "gate_grad": 0.0,
+    "all_finite": true
+   },
+   {
+    "step": 1,
+    "out_proj_grad": 189.55079650878906,
+    "gate_grad": 0.5288177132606506,
+    "all_finite": true
+   },
+   {
+    "step": 2,
+    "out_proj_grad": 108.04988861083984,
+    "gate_grad": 0.507377028465271,
+    "all_finite": true
+   }
+  ],
+  "out_proj_weight_delta_3steps": 179.67897033691406,
+  "gradient_mechanics_ok": true
+ },
+ "cmp": {
+  "params": {
+   "total": 11485249,
+   "trainable": 11485249
+  },
+  "margin_targeting_ok": true,
+  "delta_logit_40_label0": -0.24000000953674316,
+  "delta_on_true_label_max": 0.0,
+  "grads": {
+   "prototypes": 141.7469940185547,
+   "embed": 434.70745849609375,
+   "backbone_sum": 1876.1028697304428
+  },
+  "grad_ok": true,
+  "subset_epoch_sec": [
+   2.42
+  ],
+  "best_val_macro_f1_subset": 0.0,
+  "prototype_usage": {
+   "n_seen": 45,
+   "assign_per_class_proto": [
+    [
+     2,
+     7
+    ],
+    [
+     7,
+     2
+    ],
+    [
+     6,
+     3
+    ],
+    [
+     0,
+     9
+    ],
+    [
+     4,
+     5
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "unused_proto_classes": 40,
+   "max_inter_proto_cos_mean": 0.020970754904879464
+  },
+  "peak_mem_gib": null
+ },
+ "graph": {
+  "mini_time_sec": 9.2,
+  "info": {
+   "probe_epochs": 1,
+   "n_fit": 150,
+   "n_graph": 50,
+   "n_pairs_active": 3,
+   "max_n": 8,
+   "confusion_rate_graph": 0.72
+  }
+ },
+ "latency_batch1": {
+  "resnet18": {
+   "median_ms": 10.336104000089108,
+   "p95_ms": 10.824779200265766,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "asf": {
+   "median_ms": 10.663375000149244,
+   "p95_ms": 11.715249850385588,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "cmp": {
+   "median_ms": 9.805083500395995,
+   "p95_ms": 10.799674998997943,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "smallcnn": {
+   "median_ms": 14.758062998225796,
+   "p95_ms": 16.818600151600545,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "mobilenetv3s": {
+   "median_ms": 34.8280625003099,
+   "p95_ms": 74.60321089947684,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "efficientnetb0": {
+   "median_ms": 95.75008300089394,
+   "p95_ms": 96.96207095003047,
+   "n_iter": 10,
+   "batch": 1
+  },
+  "convnextt": {
+   "median_ms": 361.08272899946314,
+   "p95_ms": 428.18014184977073,
+   "n_iter": 10,
+   "batch": 1
+  }
+ },
+ "loader_sec_per_batch128": 0.1034
+}
