@@ -1,0 +1,495 @@
+{
+ "run_id": "050b-cmp-fix-screen-v1",
+ "smoke": true,
+ "device": "cpu",
+ "seed": 0,
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "screening_epochs": 1,
+ "B1_baseline_f1": 0.9448,
+ "conf_margin_fix": 0.1,
+ "context": "050 negative: prototype collapse inter-cos=1.0; margin 0.3 hại",
+ "results": [
+  {
+   "variant": "C2fix_kmeans_div",
+   "config": {
+    "model_key": "cmp",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "zero",
+    "asf_gate_ent": 0.0,
+    "cmp_kmeans_init": true,
+    "cmp_n_proto": 2,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": true,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11485249,
+    "trainable": 11485249
+   },
+   "best_val_acc": 0.9,
+   "best_val_macro_f1": 0.8967,
+   "delta_vs_B1": -0.0481,
+   "sec_per_epoch": [
+    12.38
+   ],
+   "train_time_sec": 13.0,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "prototype_usage": {
+    "n_seen": 30,
+    "assign_per_class_proto": [
+     [
+      6,
+      0
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "unused_proto_classes": 40,
+    "max_inter_proto_cos_mean": 0.12523661308611433
+   },
+   "kmeans_info": {
+    "n_embed": 225,
+    "mean_inertia": 11.020111465454102,
+    "elapsed_sec": 4.3
+   },
+   "checkpoint": "ckpt_C2fix_kmeans_div.pt",
+   "graph_time_sec": null
+  },
+  {
+   "variant": "C3fix_kmeans_div_m01",
+   "config": {
+    "model_key": "cmp",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "zero",
+    "asf_gate_ent": 0.0,
+    "cmp_kmeans_init": true,
+    "cmp_n_proto": 2,
+    "cmp_confusion": true,
+    "cmp_conf_margin": 0.1,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": true,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11485249,
+    "trainable": 11485249
+   },
+   "best_val_acc": 0.8667,
+   "best_val_macro_f1": 0.8654,
+   "delta_vs_B1": -0.0794,
+   "sec_per_epoch": [
+    11.45
+   ],
+   "train_time_sec": 12.1,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "prototype_usage": {
+    "n_seen": 30,
+    "assign_per_class_proto": [
+     [
+      6,
+      0
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "unused_proto_classes": 40,
+    "max_inter_proto_cos_mean": 0.12523632780131366
+   },
+   "kmeans_info": {
+    "n_embed": 225,
+    "mean_inertia": 11.020111465454102,
+    "elapsed_sec": 5.2
+   },
+   "checkpoint": "ckpt_C3fix_kmeans_div_m01.pt",
+   "graph_time_sec": 10.9
+  }
+ ]
+}

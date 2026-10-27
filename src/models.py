@@ -61,6 +61,9 @@ class TrainConfig:
     asf_fixed_fusion: bool = False        # A1 (True) vs A2 (False)
     asf_feature_dim: int = 128
     asf_detail_mode: str = "haar"         # "haar" | "conv" (đối chứng spatial)
+    asf_out_init: str = "zero"            # "zero" | "small" (std=1e-3 — cho gradient gate sống từ đầu)
+    asf_gate_ent: float = 0.0             # >0: entropy regularizer chống gate sụp 1-hot
+    cmp_kmeans_init: bool = False         # khởi tạo prototype bằng k-means trên embedding
     # CMP
     cmp_n_proto: int = 1                  # C1/C2: 1 hoặc 2, 4
     cmp_confusion: bool = False           # C3
@@ -164,7 +167,8 @@ def build_model(cfg: TrainConfig, pretrained: bool = True) -> nn.Module:
         return m
     if cfg.model_key == "asf":
         return ASFResNet18(cfg.num_classes, pretrained=pretrained, fixed_fusion=cfg.asf_fixed_fusion,
-                           feature_dim=cfg.asf_feature_dim, detail_mode=cfg.asf_detail_mode)
+                           feature_dim=cfg.asf_feature_dim, detail_mode=cfg.asf_detail_mode,
+                           out_init=cfg.asf_out_init)
     if cfg.model_key == "cmp":
         return CMPResNet18(cfg.num_classes, pretrained=pretrained, n_proto=cfg.cmp_n_proto,
                            embed_dim=cfg.cmp_embed_dim, confusion=cfg.cmp_confusion,
@@ -221,7 +225,7 @@ class ASFResNet18(nn.Module):
     """
 
     def __init__(self, num_classes: int = 45, pretrained: bool = True, fixed_fusion: bool = False,
-                 feature_dim: int = 128, detail_mode: str = "haar"):
+                 feature_dim: int = 128, detail_mode: str = "haar", out_init: str = "zero"):
         super().__init__()
         import torchvision
 
@@ -245,9 +249,15 @@ class ASFResNet18(nn.Module):
         else:
             self.gate = nn.Linear(F_ * self.n_components, self.n_components)
         self.out_proj = nn.Linear(F_, 512)
-        nn.init.zeros_(self.out_proj.weight)
-        nn.init.zeros_(self.out_proj.bias)
+        if out_init == "small":
+            # scale nhỏ thay zero: gradient của gate sống từ batch đầu (chống sụp 1-hot do zero-init)
+            nn.init.normal_(self.out_proj.weight, std=1e-3)
+            nn.init.zeros_(self.out_proj.bias)
+        else:
+            nn.init.zeros_(self.out_proj.weight)
+            nn.init.zeros_(self.out_proj.bias)
         self.head = nn.Linear(512, num_classes)
+        self._last_gates: torch.Tensor | None = None
 
     def _backbone_feats(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h1 = self.layer1(self.stem(x))
@@ -277,11 +287,23 @@ class ASFResNet18(nn.Module):
         if self.fixed_fusion:
             w = torch.softmax(self.fixed_logits, dim=0)
             w = w.view(1, -1, 1).expand_as(stack)
+            self._last_gates = None
         else:
-            w = torch.softmax(self.gate(stack.flatten(1)), dim=-1).unsqueeze(-1)  # (B, 8, 1)
+            w = torch.softmax(self.gate(stack.flatten(1)), dim=-1)                # (B, 8)
+            self._last_gates = w   # giữ gradient — dùng cho gate entropy regularizer
+            w = w.unsqueeze(-1)                                                    # (B, 8, 1)
         fused = (stack * w).sum(dim=1)                             # (B, F)
         backbone_vec = self.pool(f4).flatten(1)                    # (B, 512)
         return self.head(backbone_vec + self.out_proj(fused))
+
+    def gate_entropy_loss(self) -> torch.Tensor:
+        """Phạt gate sụp 1-hot: (log K − H(w)) / log K ∈ [0,1], 0 khi đều.
+        Dùng _last_gates của batch hiện tại (gradient chảy về gate MLP)."""
+        if self.fixed_fusion or self._last_gates is None:
+            return torch.zeros((), device=next(self.parameters()).device)
+        p = self._last_gates.clamp_min(1e-8)
+        h = -(p * p.log()).sum(-1).mean()
+        return (math.log(self.n_components) - h) / math.log(self.n_components)
 
     def gate_weights(self, x: torch.Tensor) -> torch.Tensor:
         """Trả về (B, 8) để phân tích phân bố gate (chỉ dùng khi fixed_fusion=False)."""
@@ -386,6 +408,45 @@ class CMPResNet18(nn.Module):
         return {"n_seen": n_seen, "assign_per_class_proto": assign.tolist(),
                 "unused_proto_classes": int((assign.sum(1) == 0).sum()),
                 "max_inter_proto_cos_mean": float(np.mean(inter)) if inter else None}
+
+
+def init_prototypes_kmeans(model: CMPResNet18, manifest: pd.DataFrame, root: str, device: str,
+                           batch_size: int = 256, num_workers: int = 4, seed: int = 0,
+                           log_every: int = 20) -> dict:
+    """Khởi tạo prototype bằng k-means trên embedding ImageNet của ảnh TRAIN (eval transform).
+    Chống prototype collapse (inter-cos=1.0 khi random init). Chạy 1 lần trước training."""
+    from sklearn.cluster import KMeans
+
+    model.to(device).eval()
+    dl = DataLoader(ResiscDataset(manifest, root, train=False, input_size=256), batch_size=batch_size,
+                    shuffle=False, num_workers=num_workers)
+    embs, ys = [], []
+    t0 = time.time()
+    with torch.no_grad():
+        for bi, (x, y) in enumerate(dl):
+            embs.append(model.embeddings(x.to(device)).cpu())
+            ys.append(y)
+            if (bi + 1) % log_every == 0:
+                print(f"[kmeans-init] batch {bi+1}/{len(dl)} | {time.time()-t0:.0f}s", flush=True)
+    E = torch.cat(embs).numpy()
+    Y = torch.cat(ys).numpy()
+    C, K = model.C, model.K
+    protos = np.zeros((C * K, E.shape[1]), dtype=np.float32)
+    inertias = []
+    for c in range(C):
+        Ec = E[Y == c]
+        if len(Ec) >= K:
+            km = KMeans(n_clusters=K, n_init=4, random_state=seed).fit(Ec)
+            protos[c * K:(c + 1) * K] = km.cluster_centers_
+            inertias.append(float(km.inertia_))
+        else:  # lớp quá ít mẫu — giữ random init hàng tương ứng
+            protos[c * K:(c + 1) * K] = model.prototypes.data[c * K:(c + 1) * K].cpu().numpy()
+    model.prototypes.data = torch.from_numpy(protos).to(model.prototypes.device)
+    # chuẩn hóa lại (logits_from_emb tự normalize, nhưng giữ state sạch)
+    info = {"n_embed": int(len(E)), "mean_inertia": float(np.mean(inertias)) if inertias else None,
+            "elapsed_sec": round(time.time() - t0, 1)}
+    print(f"[kmeans-init] DONE {info}", flush=True)
+    return info
 
 
 # ---------------------------------------------------------------- data staging
@@ -530,6 +591,8 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
                 loss = crit(logits, y)
                 if isinstance(model, CMPResNet18) and model.diversity:
                     loss = loss + cfg.cmp_div_weight * model.diversity_loss()
+                if cfg.asf_gate_ent > 0 and hasattr(model, "gate_entropy_loss"):
+                    loss = loss + cfg.asf_gate_ent * model.gate_entropy_loss()
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()

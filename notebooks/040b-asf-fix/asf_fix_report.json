@@ -1,0 +1,174 @@
+{
+ "run_id": "040b-asf-fix-screen-v1",
+ "smoke": true,
+ "device": "cpu",
+ "seed": 0,
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "screening_epochs": 1,
+ "B1_baseline_f1": 0.9448,
+ "context": "040 negative: gate collapse 100% LL4 (std=0)",
+ "results": [
+  {
+   "variant": "A2fix_small",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.0,
+    "cmp_kmeans_init": false,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11603573,
+    "trainable": 11603573
+   },
+   "best_val_acc": 0.4667,
+   "best_val_macro_f1": 0.2716,
+   "delta_vs_B1": -0.6732,
+   "sec_per_epoch": [
+    11.75
+   ],
+   "train_time_sec": 13.5,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1247,
+     0.1501,
+     0.1355,
+     0.1257,
+     0.1236,
+     0.1185,
+     0.1229,
+     0.099
+    ],
+    "gate_std_across_images": [
+     0.00445,
+     0.00643,
+     0.00437,
+     0.00625,
+     0.00467,
+     0.00399,
+     0.00419,
+     0.00536
+    ],
+    "max_mean_component": 0.1501,
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_A2fix_small.pt"
+  },
+  {
+   "variant": "A2fix_ent",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.05,
+    "cmp_kmeans_init": false,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11603573,
+    "trainable": 11603573
+   },
+   "best_val_acc": 0.4667,
+   "best_val_macro_f1": 0.2716,
+   "delta_vs_B1": -0.6732,
+   "sec_per_epoch": [
+    11.06
+   ],
+   "train_time_sec": 11.8,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1289,
+     0.1265,
+     0.1177,
+     0.1304,
+     0.1231,
+     0.1412,
+     0.1212,
+     0.1109
+    ],
+    "gate_std_across_images": [
+     0.0045,
+     0.00564,
+     0.00412,
+     0.00652,
+     0.00475,
+     0.00401,
+     0.00419,
+     0.00535
+    ],
+    "max_mean_component": 0.1412,
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_A2fix_ent.pt"
+  }
+ ]
+}
