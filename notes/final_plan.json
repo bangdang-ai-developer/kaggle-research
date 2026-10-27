@@ -1,0 +1,50 @@
+{
+  "project": "Phân loại cảnh ảnh viễn thám NWPU-RESISC45 — ASF + CMP",
+  "created": "2026-10-27",
+  "locked_before": "060a/060b final training; 070 test evaluation chỉ chạy SAU khi plan này đã commit",
+  "split_manifest_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a",
+  "dataset": {
+    "kaggle": "punfake/resisc45",
+    "n_images": 31500,
+    "n_classes": 45,
+    "split": "train 23626 / val 3149 / test 4725 (per-class 524-526/69-70/104-107)",
+    "split_seed": 42,
+    "dup_policy": "exact MD5 auto + mutual-NN hamming<=6; 4 cross-class groups co-split"
+  },
+  "protocol": {
+    "seeds": [0, 1, 2],
+    "epochs": 15,
+    "early_stop_patience": 5,
+    "checkpoint_selection": "val macro-F1 (KHÔNG dùng test)",
+    "optimizer": "AdamW lr_backbone 1e-4 / lr_head 1e-3, wd 1e-4, cosine + warmup 5%",
+    "batch_size": 128,
+    "amp": true,
+    "input": "256x256, ImageNet normalize, train aug RRC(0.7-1.0)+hflip+vflip",
+    "staging": "dataset copy sang /tmp local trước train (bắt buộc)",
+    "test_access": "chỉ 070, một lần, sau khi mọi hyperparameter đã khóa"
+  },
+  "final_configs": {
+    "B0_smallcnn": {"model_key": "smallcnn", "note": "train từ đầu"},
+    "B1_resnet18": {"model_key": "resnet18", "note": "đối chứng trực tiếp 2 proposed"},
+    "B2_mobilenetv3s": {"model_key": "mobilenetv3s"},
+    "B3_efficientnetb0": {"model_key": "efficientnetb0"},
+    "B4_convnextt": {"model_key": "convnextt"},
+    "ASF_A2fix_ent": {"model_key": "asf", "asf_out_init": "small", "asf_gate_ent": 0.05,
+                      "asf_detail_mode": "haar", "asf_fixed_fusion": false,
+                      "note": "040b: gate không collapse (max_mean 0.16), F1 0.9472 screen"},
+    "CMP_C2": {"model_key": "cmp", "cmp_n_proto": 2, "cmp_confusion": false,
+               "note": "050: cấu hình CMP tốt nhất 0.9441; confusion margin + kmeans/diversity đều negative — giữ nguyên cấu hình, báo cáo trung thực"}
+  },
+  "screening_history": {
+    "030": "B0 0.503 / B1 0.9448 / B2 0.9357 / B3 0.9550 / B4 0.9638",
+    "040": "NEGATIVE: gate collapse 100% LL4 (A1 0.9469 / A2 0.9456 / A2conv 0.9457)",
+    "040b": "A2fix-small 0.9453 (vẫn collapse) / A2fix-ent 0.9472 gate sống — chọn vào final",
+    "050": "NEGATIVE: C1 0.9422 / C2 0.9441 / C3 0.9404; prototype collapse inter-cos=1.0",
+    "050b": "NEGATIVE: C2fix 0.9398 / C3fix 0.9413, inter-cos vẫn 1.0 — dừng tuning đúng trần 2 config/proposed"
+  },
+  "tuning_budget_used": {"ASF": 3, "CMP": 3, "trần": "≤2 cấu hình + vòng fix duyệt 2026-10-27"},
+  "expected_outcomes": {
+    "ASF": "có cơ hội vượt B1 (+0.24% ở screen, chưa quá nhiễu seed) — 3 seed sẽ kết luận",
+    "CMP": "dự kiến ≈ B1 (±nhiễu) — nếu không vượt: báo cáo 'chưa đạt' kèm negative results, đúng mục 16 tiêu chí hoàn thành"
+  }
+}
