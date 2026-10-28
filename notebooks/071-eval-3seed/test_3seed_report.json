@@ -1,0 +1,225 @@
+{
+ "run_id": "071-eval-3seed-v1",
+ "smoke": true,
+ "device": "cpu",
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "seeds": [
+  0
+ ],
+ "plan": "notes/final_plan_v2.json",
+ "results": [
+  {
+   "model": "smallcnn",
+   "seed": 0,
+   "test_acc": 0.6444,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.0716,
+   "test_macro_f1": 0.0865,
+   "n": 45,
+   "latency": {
+    "median_ms": 14.016375000210246,
+    "p95_ms": 14.316518599389383,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "resnet18",
+   "seed": 0,
+   "test_acc": 1.0,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1111,
+   "test_macro_f1": 0.1111,
+   "n": 45,
+   "latency": {
+    "median_ms": 8.682896001118934,
+    "p95_ms": 9.23441874965647,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "mobilenetv3s",
+   "seed": 0,
+   "test_acc": 0.9778,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1086,
+   "test_macro_f1": 0.1098,
+   "n": 45,
+   "latency": {
+    "median_ms": 30.045146000702516,
+    "p95_ms": 30.749406550330605,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "efficientnetb0",
+   "seed": 0,
+   "test_acc": 0.9778,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1086,
+   "test_macro_f1": 0.1098,
+   "n": 45,
+   "latency": {
+    "median_ms": 87.14443749977363,
+    "p95_ms": 88.3748770495913,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "convnextt",
+   "seed": 0,
+   "test_acc": 1.0,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1111,
+   "test_macro_f1": 0.1111,
+   "n": 45,
+   "latency": {
+    "median_ms": 234.6920415002387,
+    "p95_ms": 238.99640380013807,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "ASF_A2fix_ent",
+   "seed": 0,
+   "test_acc": 0.9778,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1086,
+   "test_macro_f1": 0.1098,
+   "n": 45,
+   "latency": {
+    "median_ms": 13.755083999058115,
+    "p95_ms": 35.29148299994629,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "model": "CMP_C2",
+   "seed": 0,
+   "test_acc": 1.0,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1111,
+   "test_macro_f1": 0.1111,
+   "n": 45,
+   "latency": {
+    "median_ms": 9.189312499984226,
+    "p95_ms": 9.798081100234413,
+    "n_iter": 10,
+    "batch": 1
+   }
+  }
+ ],
+ "summary": {
+  "smallcnn": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 0.6444,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.0865,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 14.0164,
+    "std": 0.0
+   }
+  },
+  "resnet18": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 1.0,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1111,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 8.6829,
+    "std": 0.0
+   }
+  },
+  "mobilenetv3s": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 0.9778,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1098,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 30.0451,
+    "std": 0.0
+   }
+  },
+  "efficientnetb0": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 0.9778,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1098,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 87.1444,
+    "std": 0.0
+   }
+  },
+  "convnextt": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 1.0,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1111,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 234.692,
+    "std": 0.0
+   }
+  },
+  "ASF_A2fix_ent": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 0.9778,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1098,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 13.7551,
+    "std": 0.0
+   }
+  },
+  "CMP_C2": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 1.0,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1111,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 9.1893,
+    "std": 0.0
+   }
+  }
+ },
+ "paired_vs_B1": {}
+}

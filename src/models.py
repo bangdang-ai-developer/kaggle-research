@@ -306,7 +306,7 @@ class ASFResNet18(nn.Module):
                 rms.append(c.pow(2).mean(dim=(1, 2, 3)).add(1e-6).sqrt())
                 mar.append(c.abs().mean(dim=(1, 2, 3)))
             return self.gate_en(torch.stack(rms + mar, dim=1))
-        return stack.flatten(1)
+        return self.gate(stack.flatten(1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         f2, f4 = self._backbone_feats(x)
