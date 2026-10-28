@@ -16242,53 +16242,53 @@
  },
  "latency": {
   "smallcnn": {
-   "median_ms": 13.463833000059822,
-   "p95_ms": 13.566068750105842,
+   "median_ms": 15.028312000140431,
+   "p95_ms": 15.766729100323573,
    "n_iter": 10,
    "batch": 1,
-   "throughput_imgs_sec": 52.3
+   "throughput_imgs_sec": 42.8
   },
   "resnet18": {
-   "median_ms": 8.607291500084102,
-   "p95_ms": 8.706475150142978,
+   "median_ms": 8.959875000527973,
+   "p95_ms": 22.069126899987154,
    "n_iter": 10,
    "batch": 1,
-   "throughput_imgs_sec": 64.4
+   "throughput_imgs_sec": 57.4
   },
   "mobilenetv3s": {
-   "median_ms": 28.063687499980006,
-   "p95_ms": 28.288677300110976,
+   "median_ms": 29.276771000240842,
+   "p95_ms": 30.189460200062967,
+   "n_iter": 10,
+   "batch": 1,
+   "throughput_imgs_sec": 48.5
+  },
+  "efficientnetb0": {
+   "median_ms": 86.2380209996445,
+   "p95_ms": 92.89033970007948,
+   "n_iter": 10,
+   "batch": 1,
+   "throughput_imgs_sec": 15.2
+  },
+  "convnextt": {
+   "median_ms": 256.04822950026573,
+   "p95_ms": 280.5086977000883,
+   "n_iter": 10,
+   "batch": 1,
+   "throughput_imgs_sec": 14.7
+  },
+  "ASF_A2fix_ent": {
+   "median_ms": 9.524812499876134,
+   "p95_ms": 10.017691999382805,
    "n_iter": 10,
    "batch": 1,
    "throughput_imgs_sec": 54.3
   },
-  "efficientnetb0": {
-   "median_ms": 84.32356250000339,
-   "p95_ms": 84.83452049981679,
-   "n_iter": 10,
-   "batch": 1,
-   "throughput_imgs_sec": 16.0
-  },
-  "convnextt": {
-   "median_ms": 224.97550000002775,
-   "p95_ms": 225.76709840016065,
-   "n_iter": 10,
-   "batch": 1,
-   "throughput_imgs_sec": 15.1
-  },
-  "ASF_A2fix_ent": {
-   "median_ms": 9.500041999899622,
-   "p95_ms": 9.578404099897853,
-   "n_iter": 10,
-   "batch": 1,
-   "throughput_imgs_sec": 58.1
-  },
   "CMP_C2": {
-   "median_ms": 9.839041999839537,
-   "p95_ms": 10.536841299995103,
+   "median_ms": 8.786541499830491,
+   "p95_ms": 9.239777149514339,
    "n_iter": 10,
    "batch": 1,
-   "throughput_imgs_sec": 62.4
+   "throughput_imgs_sec": 60.4
   }
  },
  "robustness": {

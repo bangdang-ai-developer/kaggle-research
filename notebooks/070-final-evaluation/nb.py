@@ -118,7 +118,8 @@ def find_ckpt(rel: str) -> str:
 loaded = {}
 for bare, info in best.items():
     cfg = TrainConfig(num_classes=45, seed=info["seed"], model_key=info["model_key"], **info["overrides"])
-    model = build_model(cfg).to(device)
+    # pretrained=False: checkpoint chứa TOÀN BỘ state_dict đã fine-tune — không cần tải weights mạng
+    model = build_model(cfg, pretrained=False).to(device)
     ck_path = find_ckpt(info["rel_ckpt"])
     sd = torch.load(ck_path, map_location=device, weights_only=False)
     model.load_state_dict(sd["state_dict"])
