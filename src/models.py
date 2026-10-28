@@ -71,6 +71,8 @@ class TrainConfig:
     cmp_pair_margin: float = 0.1
     cmp_pair_weight: float = 0.5
     cmp_pair_warmup: int = 3              # λ = weight · min(1, (epoch+1)/warmup)
+    kd_alpha: float = 0.0                 # >0: KD bật — L = (1−α)·CE + α·T²·KL(teacher‖student)
+    kd_T: float = 4.0                     # temperature distillation
     # CMP
     cmp_n_proto: int = 1                  # C1/C2: 1 hoặc 2, 4
     cmp_confusion: bool = False           # C3
@@ -616,10 +618,25 @@ def _param_groups(model: nn.Module, cfg: TrainConfig) -> list[dict]:
     return [{"params": backbone, "lr": cfg.lr_backbone}, {"params": head, "lr": cfg.lr_head}]
 
 
+def kd_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor, T: float) -> torch.Tensor:
+    """Knowledge distillation chuẩn (Hinton et al.):
+    L = T² · KL(softmax(teacher/T) ‖ softmax(student/T)), reduction=batchmean.
+    FP32 ổn định; teacher được xử lý no_grad bên ngoài. T² khôi phục scale gradient."""
+    return F.kl_div(F.log_softmax(student_logits.float() / T, dim=1),
+                    F.softmax(teacher_logits.float() / T, dim=1),
+                    reduction="batchmean") * (T * T)
+
+
 def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val: DataLoader | None,
-                device: str, verbose: bool = True, state_out: str | None = None) -> tuple[nn.Module, dict]:
-    """Train với AMP + cosine + warmup + early stop (val macro-F1). Trả về (best_model, history)."""
+                device: str, verbose: bool = True, state_out: str | None = None,
+                teacher: nn.Module | None = None) -> tuple[nn.Module, dict]:
+    """Train với AMP + cosine + warmup + early stop (val macro-F1). Trả về (best_model, history).
+    teacher (nếu có): frozen eval, no_grad, cùng batch x với student (same view) — KD."""
     model.to(device)
+    if teacher is not None:
+        teacher.to(device).eval()
+        for p in teacher.parameters():
+            p.requires_grad_(False)
     opt = torch.optim.AdamW(_param_groups(model, cfg), weight_decay=cfg.weight_decay)
     steps_per_epoch = max(len(dl_train), 1)
     total_steps = cfg.epochs * steps_per_epoch
@@ -640,7 +657,7 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
     for ep in range(cfg.epochs):
         model.train()
         ep_loss, ep_n, t0 = 0.0, 0, time.time()
-        aux = {"gate_ent": 0.0, "div": 0.0, "pair": 0.0}
+        aux = {"gate_ent": 0.0, "div": 0.0, "pair": 0.0, "kd": 0.0}
         n_batches = len(dl_train)
         # ASF-EA: entropy anneal — λ giảm tuyến tính về 0 sau cfg.asf_gate_ent_anneal epoch
         ent_w = cfg.asf_gate_ent
@@ -665,6 +682,12 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
                     ent_l = model.gate_entropy_loss()
                     loss = loss + ent_w * ent_l
                     aux["gate_ent"] += float(ent_l) * len(y)
+                if teacher is not None:
+                    with torch.no_grad():
+                        t_logits = teacher(x)          # same view, frozen eval
+                    kd_l = kd_loss(logits, t_logits, cfg.kd_T)
+                    loss = (1.0 - cfg.kd_alpha) * loss + cfg.kd_alpha * kd_l
+                    aux["kd"] += float(kd_l) * len(y)
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()

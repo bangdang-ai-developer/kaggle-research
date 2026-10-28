@@ -1,0 +1,21 @@
+{
+ "K1": {
+  "kl_ts": 0.9493106603622437,
+  "kl_st": 0.9702285528182983,
+  "manual_match": true
+ },
+ "K2": {
+  "teacher_grad": null,
+  "student_grad": 7.531998157501221
+ },
+ "K3": {
+  "ratio_T4_T1": 1.0094079971313477,
+  "dtype_ok": "torch.float32"
+ },
+ "K4_alpha0_matches_ce": true,
+ "K5": {
+  "teacher_weights_frozen": true,
+  "teacher_bn_frozen": true,
+  "kd_aux_in_history": 0.192124
+ }
+}
