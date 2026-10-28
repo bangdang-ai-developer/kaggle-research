@@ -16,7 +16,9 @@
 | **ASF A2fix-ent** | **0.9543 ± 0.0036** | **0.9543 ± 0.0036** | 11.60 | 0.21 |
 | CMP C2 | 0.9499 ± 0.0010 | 0.9501 ± 0.0010 | 11.49 | 0.20 |
 
-## 2. TEST chính thức (4.725 ảnh, best-val seed — lưu trong test_report.json)
+## 2. TEST chính thức
+
+### 2a. Best-val seed (bản công bố ban đầu — `test_report.json` từ 070b)
 
 | Model | seed | TEST Acc | TEST F1 (macro) | Latency ms (median) | Throughput imgs/s |
 |---|---|---|---|---|---|
@@ -25,27 +27,45 @@
 | B2 MobileNetV3-S | 0 | 0.9475 | 0.9476 | 4.60 | 384 |
 | B3 EfficientNet-B0 | 0 | 0.9602 | 0.9601 | 7.36 | 355 |
 | B4 ConvNeXt-T | 2 | 0.9678 | 0.9677 | 5.96 | 136 |
-| **ASF A2fix-ent** | 2 | **0.9549** | **0.9550** | 3.72 | 348 |
+| ASF A2fix-ent | 2 | 0.9549 | 0.9550 | 3.72 | 348 |
 | CMP C2 | 1 | 0.9515 | 0.9515 | 2.56 | 330 |
+
+⚠️ Cảnh báo: bảng 2a chọn seed theo val → có selection effect; bảng 2b dưới đây là đánh giá công bằng hơn.
+
+### 2b. TEST mở rộng đủ 3 seeds (`test_3seed_report.json` từ 071b, `final_plan_v2.json`)
+
+| Model | TEST Acc mean ± std | TEST F1 mean ± std | Latency ms |
+|---|---|---|---|
+| B0 SmallCNN | 0.5946 ± 0.0065 | 0.5904 ± 0.0064 | 1.54 |
+| B1 ResNet18 | **0.9537 ± 0.0019** | **0.9537 ± 0.0019** | 2.52 |
+| B2 MobileNetV3-S | 0.9469 ± 0.0015 | 0.9469 ± 0.0015 | 4.91 |
+| B3 EfficientNet-B0 | 0.9608 ± 0.0015 | 0.9607 ± 0.0015 | 7.40 |
+| B4 ConvNeXt-T | 0.9678 ± 0.0002 | 0.9677 ± 0.0002 | 6.87 |
+| ASF A2fix-ent | 0.9520 ± 0.0026 | 0.9520 ± 0.0026 | 3.82 |
+| CMP C2 | 0.9510 ± 0.0012 | 0.9509 ± 0.0012 | 2.80 |
+
+**Paired theo seed (F1):** ASF vs B1 = [−0.12%, −0.56%, +0.19%] mean **−0.16%** (1/3 seed dương); CMP vs B1 = [−0.25%, −0.45%, −0.12%] mean **−0.27%** (0/3).
+
+**Phát hiện selection effect:** con số test 0.9550 của ASF (bảng 2a) là của seed-2 — seed tốt nhất theo val; khi lấy đủ 3 seed, ASF mean 0.9520 và **không thắng B1 trên test**. Lợi ích val (+0.39%, 3/3 seed) không khái quát sang test. Đây là kết quả trung thực của đánh giá mở rộng, cập nhật sau bản công bố 2a.
 
 ## 3. Trả lời tiêu chí đề tài
 
-### ASF — ĐẠT: thắng backbone gốc B1
+### ASF — ĐẠT trên val; trên TEST 3-seed ≈ B1 (không khái quát)
 - Val: paired Δ = +0.24% / +0.38% / +0.54% theo seed — **3/3 dương**, mean +0.39% (paired t≈4.5, p≈0.05).
-- **TEST: 0.9550 vs B1 0.9531 (+0.19%)** — nhất quán với val. Đồng thời thắng B2 (+0.74%).
-- Chi phí: +3.6% params (11.60M vs 11.20M), latency +45% (3.72 vs 2.56 ms) — rẻ hơn B3/B4 đáng kể về thời gian huấn luyện (0.21h vs 0.33h/0.62h).
-- Gate hoạt động thật (không collapse sau entropy reg; max_mean 0.14–0.18/seed, phân hóa theo ảnh).
-- **Kết luận RQ1 (trong phạm vi thí nghiệm):** gate entropy + wavelet branch cho +0.2% F1 với chi phí tham số/nhiễu nhỏ; LỢI ÍCH NHỎ — cần cẩn trọng tuyên bố (±0.2% gần biên nhiễu, nhưng paired 3/3 seed dương hỗ trợ hướng đúng).
+- **TEST 3-seed: 0.9520 ± 0.0026 vs B1 0.9537 ± 0.0019 — mean −0.16%, chỉ 1/3 seed dương → lợi ích val KHÔNG khái quát sang test.** Bản công bố best-val seed (0.9550 vs 0.9531, +0.19%) có selection effect — xem §2a/§2b.
+- ASF vẫn thắng B2 rõ ràng trên cả val lẫn test 3-seed (+0.51%).
+- Chi phí: +3.6% params (11.60M vs 11.20M), latency +52% (3.82 vs 2.52 ms).
+- **Kết luận RQ1:** cải thiện val có thật (3/3 seed) nhưng quy mô +0.2–0.4% và không được xác nhận trên test — tuyên bố trung thực: "cải thiện nhỏ trên validation, không vượt baseline gốc trên test".
 
-### CMP — CHƯA ĐẠT: hòa B1
-- Val paired Δ = −0.05% (1/3 seed dương); TEST 0.9515 vs 0.9531 (−0.15%).
+### CMP — CHƯA ĐẠT: dưới B1 trên cả val và test
+- Val paired Δ = −0.05% (1/3 seed dương); **TEST 3-seed 0.9509 ± 0.0012 vs B1 0.9537 ± 0.0019 — paired 0/3 seed dương, mean −0.27%.**
 - Nguyên nhân có bằng chứng cơ học: prototype collapse bền vững (inter-cos = 1.0 ở MỌI seed và mọi biến thể fix); confusion margin 0.3 gây hại, 0.1 trung tính.
-- **Kết luận RQ2:** multi-prototype + confusion margin KHÔNG cải thiện trong cấu hình đã thử — negative result chính thức (5 cấu hình đã thử: C1/C2/C3/C2fix/C3fix).
+- **Kết luận RQ2:** multi-prototype + confusion margin KHÔNG cải thiện trong cấu hình đã thử — negative result chính thức (5 cấu hình v1 + 2 cấu hình v2: hard-max phá collapse cơ học nhưng F1 vẫn không tăng).
 
 ### RQ3 chi phí
-- ASF: +0.19% test F1 đổi +3.6% params, +45% latency, +5% train time — tương xứng ở mức ứng dụng nhẹ; không cạnh tranh EffB0/B4 về F1 thuần.
+- ASF: chi phí +3.6% params, +52% latency nhưng không có lợi ích test xác nhận → không tương xứng (theo 3-seed).
 - CMP: cùng chi phí B1, không có lợi ích — không tương xứng.
-- ConvNeXt-T: F1 cao nhất (0.9677) nhưng train đắt 3.8× B1, throughput thấp nhất 136 imgs/s.
+- ConvNeXt-T: F1 cao nhất (0.9677 ± 0.0002) nhưng train đắt 3.8× B1, throughput thấp nhất.
 
 ## 4. Robustness (test acc, corruption synthetic — không chứng minh deployment)
 
@@ -66,12 +86,14 @@
 - CMP: C1 0.9422 / C2 0.9441 / C3(+margin 0.3) 0.9404 / C2fix 0.9398 / C3fix 0.9413 — collapse bền vững.
 - Chi tiết: `notes/experiment_registry.csv` + reports trong `outputs/`.
 
-## 6. Bảng kiểm thắng/thua (mục 16.11)
+## 6. Bảng kiểm thắng/thua (mục 16.11 — cập nhật theo test 3-seed đầy đủ)
 
 | Proposed | Thắng B1 (backbone gốc)? | Thắng baseline khác? | Bằng chứng |
 |---|---|---|---|
-| ASF A2fix-ent | **CÓ** — TEST +0.19%, val paired 3/3 seed | B2 (+0.74% test) | §2 + paired seeds |
-| CMP C2 | KHÔNG (−0.15% test, hòa thống kê) | B2 (+0.39% test) | §2 + collapse analysis |
+| ASF A2fix-ent | **VAL: CÓ** (paired 3/3, +0.39%); **TEST: KHÔNG** (mean −0.16%, 1/3 seed) | B2: **CÓ** (test 3-seed +0.51%) | §1, §2b, §3 |
+| CMP C2 | KHÔNG (val −0.05%; test −0.27%, 0/3 seed) | B2: **CÓ** (test 3-seed +0.40%) | §2b + collapse analysis |
+
+Đề bài yêu cầu "thắng ít nhất một baseline": **cả hai ĐẠT** (thắng B2 rõ trên test 3-seed). Tuy nhiên kết luận trung thực đầy đủ: ASF chỉ thắng B1 trên validation, không giữ được trên test; CMP không thắng B1 ở bất kỳ tập nào.
 
 ## 7. Phần chưa hoàn thành / hạn chế (chi tiết limitations.md)
 

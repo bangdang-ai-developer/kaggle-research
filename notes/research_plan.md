@@ -1,7 +1,9 @@
 # Research Plan — Phân loại cảnh ảnh viễn thám (NWPU-RESISC45)
 
 **Tên làm việc:** Phân loại cảnh ảnh viễn thám bằng lựa chọn đặc trưng đa tỉ lệ và học phân biệt các lớp dễ nhầm lẫn
-**Ngày lập:** 2026-10-26 · **Trạng thái:** ACTIVE · **Nhóm:** 2 thành viên (TV1: triển khai, TV2: review tài liệu)
+**Ngày lập:** 2026-10-26 · **Trạng thái:** v1 HOÀN TẤT + vòng v2 (diagnostics/mở rộng) HOÀN TẤT · **Nhóm:** 2 thành viên (TV1: triển khai, TV2: review tài liệu)
+
+> **Đồng bộ v2 (2026-10-28):** vòng v2 đã chạy theo `notes/v2_plan.md` — diagnostics xác nhận margin v1 sai chiều + collapse thật (không phải bug đo) + signed-GAP triệt tiêu; 4 candidate v2 (CMP-P/PG, ASF-E/EA) KHÔNG vượt cấu hình v1 tương ứng → **model nộp chính giữ v1** (ASF A2fix-ent, CMP C2). Kết quả test 3-seed mở rộng cho thấy ASF ≈ B1 trên test (−0.16% mean, 1/3 seed) — lợi ích val không khái quát; cả 2 proposed vẫn thắng B2. Chi tiết: `notes/final_plan_v2.json`, `notes/v2_diagnostics.json`, `notes/results_summary.md` (bảng 2b + §3), `notes/limitations.md` §2b + changelog.
 
 ## 1. Câu hỏi nghiên cứu
 

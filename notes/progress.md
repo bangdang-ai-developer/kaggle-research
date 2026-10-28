@@ -1,5 +1,23 @@
 # Progress Log
 
+## 2026-10-28 (v2) — Vòng nghiên cứu mở rộng HOÀN TẤT
+
+**Diagnostics** (`scripts/v2_diagnostics.py` → `notes/v2_diagnostics.json`):
+- XÁC NHẬN: margin v1 sai chiều (giảm CE/gradient trên mẫu khó — không phải CosFace); prototype collapse thật 45/45 lớp (không phải bug đo — cross-class cos −0.02 khác hẳn); signed-GAP triệt tiêu 19× (căn cứ energy descriptor); residual branch KHÔNG chết (0.37) — bác bỏ claim v1 "≡B1".
+- KHÔNG tái lập được cơ chế collapse đầy đủ trong synthetic — ghi minh bạch.
+
+**Screening v2:** CMP-P 0.9394 / CMP-PG 0.9416 (hard-max phá collapse inter-cos 1.0→0.73/0.74 — xác nhận chẩn đoán — nhưng F1 không tăng; minority≈0); ASF-E 0.9464 (vượt control fixed +0.39%, không vượt GAP-gate v1 0.9472) / ASF-EA 0.9454. → KHÔNG candidate nào vượt v1 → **giữ v1 làm model chính** (`notes/final_plan_v2.json` khóa).
+
+**Expanded test eval (071b):** 21/21 checkpoints × test — phát hiện **selection effect**: ASF test 3-seed 0.9520±0.0026 vs B1 0.9537±0.0019 (paired 1/3 seed dương) → lợi ích val không khái quát sang test; bảng best-val-seed cũ (ASF 0.9550 > B1 0.9531) giữ như lịch sử với cảnh báo selection. Cả 2 proposed vẫn thắng B2 rõ.
+
+**Demo:** `demo/app.py` (Streamlit) — B1/ASF/CMP, top-3, model-only vs e2e latency, 7 corruption options, cache models, offline.
+
+**GPU v2:** ~2h (diagnostics local 0 + 080 0.5 + 090 0.6 + 071b 0.5 + 071v1 fail ~0.2 trước cancel) — tổng project ~12h/30h tuần.
+
+**Còn lại (TV2):** 2 sơ đồ kiến trúc; viết report/slides theo outline; soát reviewer_checklist.
+
+---
+
 ## 2026-10-28 — DỰ ÁN HOÀN TẤT: toàn pipeline + tài liệu bàn giao
 
 **Kết quả chính thức (TEST, 4.725 ảnh, 1 lần duy nhất):** ASF **0.9549 acc / 0.9550 F1 — THẮNG backbone gốc B1 (0.9530/0.9531, +0.19%)** và B2; nhất quán val paired 3/3 seed (+0.39% mean, p≈0.05). CMP 0.9515/0.9515 — hòa B1, **chưa thắng** (negative result: prototype collapse inter-cos=1.0 bền vững qua 5 cấu hình). B4 ConvNeXt-T 0.9678 trần (đắt 3.8×).

@@ -2,19 +2,38 @@
 
 **Ngày:** 2026-10-28 · Đối chiếu `notes/results_summary.md` (số chính thức).
 
-## 1. Về kết quả ASF (thắng B1)
+## 1. Về kết quả ASF
 
-1. **Độ lớn lợi ích nhỏ:** TEST +0.19% F1 (0.9550 vs 0.9531), val paired mean +0.39%. Nằm gần biên nhiễu seed (std ~0.002–0.004). Paired 3/3 seed dương + t≈4.5 (p≈0.05, df=2) hỗ trợ hướng đúng nhưng **chỉ 3 seed** — không khẳng định phổ quát.
-2. **Chỉ trên 1 dataset:** mọi kết quả là NWPU-RESISC45. Không có EuroSAT/dataset thứ hai (ngoài phạm vi thời gian + quota).
-3. **So sánh với baseline lớn:** ASF KHÔNG vượt B3 EfficientNet-B0 (0.9602) và B4 ConvNeXt-T (0.9678) — ASF thắng backbone gốc và B2, không phải SOTA tổng thể.
-4. **Gate sau entropy reg phân bố gần đều** (max_mean 0.14–0.18 so đều 0.125): chưa có bằng chứng gate học "chọn theo nội dung ảnh" mạnh; chỉ chứng minh không sụp và model không tệ hơn. Cơ chế giải thích lợi ích +0.2% **chưa được chứng minh nhân quả** (gate distribution ≠ causality).
-5. **Latency +45%** so B1 (3.72 vs 2.56 ms) — nếu ứng dụng biên độ cực hạn, chi phí phải được tính.
+1. **Selection effect trên test (phát hiện v2):** bản công bố đầu "ASF thắng B1 +0.19% test" đo bằng seed tốt nhất theo val. Khi đánh giá đủ 3 seed trên test (final_plan_v2), ASF mean 0.9520 vs B1 0.9537 (paired 1/3 seed dương) → **lợi ích val (+0.39%, 3/3 seed) không khái quát sang test. Tuyên bố đúng: ASF ≈ B1 trên test; thắng rõ trên validation.**
+2. **Độ lớn lợi ích nhỏ:** val +0.39% nằm gần biên nhiễu seed (std 0.002–0.004). Paired 3/3 + p≈0.05 hỗ trợ trên val, chỉ 3 seed.
+3. **Chỉ trên 1 dataset:** mọi kết quả là NWPU-RESISC45. Không có EuroSAT/dataset thứ hai.
+4. **So với baseline lớn:** ASF không vượt B3 (0.9607) và B4 (0.9677) trên test 3-seed — thắng rõ B2, không phải SOTA tổng thể.
+5. **Gate sau entropy reg gần đều** (max_mean 0.14–0.19): chưa có bằng chứng gate chọn mạnh theo nội dung ảnh; cơ chế lợi ích chưa chứng minh nhân quả.
+6. **Latency +52%** so B1 (3.82 vs 2.52 ms median, 3-seed mean) — chi phí cần tính nếu ứng dụng hạn chế.
 
 ## 2. Về kết quả CMP (chưa thắng)
 
-1. **Negative result chính thức:** 5 cấu hình (C1/C2/C3/C2fix/C3fix), tốt nhất 0.9441 (screen) — TEST 0.9515, hòa B1 (−0.15%), không thắng.
-2. **Prototype collapse bền vững** (inter-cos = 1.0 mọi seed, mọi fix): k-means init + diversity 0.01 không đủ. Hướng tiếp (chưa chạy, đề xuất): diversity weight mạnh hơn hoặc hinge trực tiếp trên cặp prototype, orthogonal init, per-prototype gating.
-3. **Confusion margin:** 0.3 gây hại rõ (−0.44%), 0.1 trung tính (−0.35%) — cơ chế weight-loss (phương án thứ 2 của spec) chưa được thử.
+1. **Negative result chính thức:** 7 cấu hình qua 2 vòng — v1: C1 0.9422 / C2 0.9441 / C3 0.9404 / C2fix 0.9398 / C3fix 0.9413 (screen 8ep); v2: CMP-P 0.9394 / CMP-PG 0.9416. Tốt nhất vẫn là C2 v1; test 3-seed 0.9509 vs B1 0.9537 (paired 0/3 seed dương).
+2. **Prototype collapse bền vững** (inter-cos = 1.0 mọi seed v1). V2 hard-max đã phá collapse cơ học (inter-cos → 0.73) **nhưng F1 không tăng** (0.9394/0.9416) — 2 prototype tách nhau mà không cùng được dùng (minority ≈ 0) → vấn đề không nằm ở head prototype.
+3. **Cơ chế collapse đầy đủ chưa được tái lập** trong synthetic (LSE/hard-max với embedding cố định đều tách nhau) — nghi parallel-drift qua LSE murette + embedding chuyển động; ghi "chưa đủ bằng chứng".
+4. **Confusion margin v1 sai chiều đã xác nhận** (diagnostics D1: giảm CE mẫu khó, giảm gradient lớp khó) — v2 pair loss sửa chiều nhưng cũng không mang lợi ích F1.
+5. Hướng tiếp (đề xuất, chưa chạy): prototype điều hòa theo cách khác (orthogonal init + hinge trực tiếp), hoặc chấp nhận cosine/FC head đơn giản cho task này.
+
+## 2b. Về vòng v2 (diagnostics + 4 candidate)
+
+- Diagnostics xác nhận: margin v1 sai chiều; collapse thật (không phải bug đo); signed-GAP triệt tiêu có căn cứ; residual branch KHÔNG chết (0.37) — bác bỏ nhận định v1 "gate collapse ≡ ResNet18".
+- ASF-E (energy gate) vượt control fixed (+0.39%) nhưng không vượt GAP-gate v1; ASF-EA không giúp trong 8 epoch.
+- Chi tiết: `notes/v2_diagnostics.json`, `notes/v2_plan.md`, reports 080/090.
+
+## Changelog tài liệu (v2 — các sửa quan trọng so với bản công bố đầu)
+
+1. §2 tách 2a/2b: bổ sung test 3-seed (21 checkpoints) + cảnh báo selection effect bảng 2a.
+2. §3/§6: ASF "thắng B1 trên test" → "thắng trên val, ≈ B1 trên test (−0.16%, 1/3 seed)"; CMP giữ "chưa thắng".
+3. Bỏ claim "gate collapse ≡ ResNet18" (residual/backbone đo được = 0.37 — diagnostics D4).
+4. "Motion blur" → "Gaussian blur"; bỏ kết luận nhân quả "stride lớn" về điểm yếu EffB0 (chưa có thí nghiệm chứng minh).
+5. "LL ≡ full feature map" giữ nguyên — khớp code (LL không phải DWT-average).
+6. Bỏ citation counts trong related_work.md; bổ sung Sub-center ArcFace, SoftTriple, CosFace, FcaNet.
+7. Tổng GPU hours phân biệt measured (runtime log) và estimated.
 
 ## 3. Về protocol và dữ liệu
 
