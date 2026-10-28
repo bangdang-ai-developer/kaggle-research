@@ -1,0 +1,300 @@
+{
+ "run_id": "090-asf-v2-screen-v1",
+ "smoke": true,
+ "device": "cpu",
+ "seed": 0,
+ "epochs": 1,
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "refs": {
+  "B1_final": 0.9504,
+  "ASF_v1_final": 0.9543,
+  "A2fix_ent_screen": 0.9472
+ },
+ "results": [
+  {
+   "variant": "A1fix_small_control",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": true,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.0,
+    "asf_gate_ent_anneal": 0,
+    "asf_gate_descriptor": "gap",
+    "cmp_kmeans_init": false,
+    "cmp_agg": "lse",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11595381,
+    "trainable": 11595381
+   },
+   "best_val_acc": 0.3,
+   "best_val_macro_f1": 0.1353,
+   "delta_vs_B1_final": -0.8151,
+   "sec_per_epoch": [
+    9.86
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 4.265388531155057,
+     "epoch_sec": 9.86,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.0,
+      "div": 0.0,
+      "pair": 0.0
+     },
+     "ent_weight": 0.0,
+     "pair_weight": 0.1667,
+     "val_acc": 0.3,
+     "val_macro_f1": 0.13527107812822098
+    }
+   ],
+   "train_time_sec": 11.1,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": null,
+   "checkpoint": "ckpt_A1fix_small_control.pt"
+  },
+  {
+   "variant": "ASF_E_energy",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.05,
+    "asf_gate_ent_anneal": 0,
+    "asf_gate_descriptor": "energy",
+    "cmp_kmeans_init": false,
+    "cmp_agg": "lse",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11595541,
+    "trainable": 11595541
+   },
+   "best_val_acc": 0.3667,
+   "best_val_macro_f1": 0.1771,
+   "delta_vs_B1_final": -0.7733,
+   "sec_per_epoch": [
+    10.84
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 4.124286013709174,
+     "epoch_sec": 10.84,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.068836,
+      "div": 0.0,
+      "pair": 0.0
+     },
+     "ent_weight": 0.05,
+     "pair_weight": 0.1667,
+     "val_acc": 0.36666666666666664,
+     "val_macro_f1": 0.17709705753184013
+    }
+   ],
+   "train_time_sec": 11.5,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1386,
+     0.1364,
+     0.1272,
+     0.0941,
+     0.162,
+     0.112,
+     0.0612,
+     0.1686
+    ],
+    "gate_std_across_images": [
+     0.00301,
+     0.00153,
+     0.00357,
+     0.00119,
+     0.00558,
+     0.00152,
+     0.00345,
+     0.00154
+    ],
+    "max_mean_component": 0.1686,
+    "residual_backbone_norm_ratio": 0.0104,
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_ASF_E_energy.pt"
+  },
+  {
+   "variant": "ASF_EA_anneal",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.05,
+    "asf_gate_ent_anneal": 8,
+    "asf_gate_descriptor": "energy",
+    "cmp_kmeans_init": false,
+    "cmp_agg": "lse",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11595541,
+    "trainable": 11595541
+   },
+   "best_val_acc": 0.3667,
+   "best_val_macro_f1": 0.1771,
+   "delta_vs_B1_final": -0.7733,
+   "sec_per_epoch": [
+    10.38
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 4.124286013709174,
+     "epoch_sec": 10.38,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.068836,
+      "div": 0.0,
+      "pair": 0.0
+     },
+     "ent_weight": 0.05,
+     "pair_weight": 0.1667,
+     "val_acc": 0.36666666666666664,
+     "val_macro_f1": 0.17709705753184013
+    }
+   ],
+   "train_time_sec": 11.2,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "gate_summary": {
+    "gate_mean_per_component": [
+     0.1386,
+     0.1364,
+     0.1272,
+     0.0941,
+     0.162,
+     0.112,
+     0.0612,
+     0.1686
+    ],
+    "gate_std_across_images": [
+     0.00301,
+     0.00153,
+     0.00357,
+     0.00119,
+     0.00558,
+     0.00152,
+     0.00345,
+     0.00154
+    ],
+    "max_mean_component": 0.1686,
+    "residual_backbone_norm_ratio": 0.0104,
+    "components": [
+     "LL2",
+     "LH2",
+     "HL2",
+     "HH2",
+     "LL4",
+     "LH4",
+     "HL4",
+     "HH4"
+    ]
+   },
+   "checkpoint": "ckpt_ASF_EA_anneal.pt"
+  }
+ ]
+}
