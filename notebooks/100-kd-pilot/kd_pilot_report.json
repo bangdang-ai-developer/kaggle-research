@@ -1,0 +1,26 @@
+{
+ "run_id": "100-kd-pilot-v1",
+ "smoke": true,
+ "device": "cpu",
+ "teacher": {
+  "seed": 2,
+  "val_f1": 0.9691,
+  "val_acc_verify": 1.0,
+  "sha256_prefix": "9627ca43dc5a39ca7b66e570",
+  "epoch": 12
+ },
+ "kd_config": {
+  "alpha": 0.5,
+  "T": 4.0
+ },
+ "kd_sec_per_epoch": [
+  29.42
+ ],
+ "kd_aux_per_epoch": [
+  29.270099
+ ],
+ "kd_peak_mem_gib": null,
+ "ce_20batch_sec": 10.3,
+ "ce_peak_mem_gib": null,
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b"
+}

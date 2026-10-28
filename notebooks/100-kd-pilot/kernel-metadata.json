@@ -1,0 +1,17 @@
+{
+  "id": "dangbang1/resisc45-kd-pilot",
+  "title": "RESISC45 KD Pilot Teacher Verify Timing",
+  "code_file": "notebook.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "false",
+  "dataset_sources": ["punfake/resisc45"],
+  "competition_sources": [],
+  "kernel_sources": [
+    "dangbang1/resisc45-data-audit-split-manifest",
+    "dangbang1/resisc45-final-baselines-b0-b4-3-seeds"
+  ]
+}

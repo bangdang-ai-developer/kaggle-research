@@ -1,0 +1,470 @@
+{
+ "run_id": "110-kd-screen-v1",
+ "smoke": true,
+ "device": "cpu",
+ "seed": 0,
+ "epochs": 1,
+ "kd": {
+  "alpha": 0.5,
+  "T": 4.0
+ },
+ "teacher": {
+  "seed": 2,
+  "sha256": "9627ca43dc5a39ca7b66e570340c29d5c980972bda35c83982a3be00455ea501"
+ },
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "controls_ce_s0": {
+  "resnet18": 0.9483,
+  "asf": 0.9507,
+  "cmp": 0.9503
+ },
+ "results": [
+  {
+   "student": "resnet18_kd",
+   "config": {
+    "model_key": "resnet18",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "zero",
+    "asf_gate_ent": 0.0,
+    "asf_gate_ent_anneal": 0,
+    "asf_gate_descriptor": "gap",
+    "cmp_kmeans_init": false,
+    "cmp_agg": "lse",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "kd_alpha": 0.5,
+    "kd_T": 4.0,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11199597,
+    "trainable": 11199597
+   },
+   "best_val_acc": 0.2667,
+   "best_val_macro_f1": 0.1612,
+   "delta_vs_CE_s0": -0.7871,
+   "sec_per_epoch": [
+    24.48
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 16.549352120293513,
+     "epoch_sec": 24.48,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.0,
+      "div": 0.0,
+      "pair": 0.0,
+      "kd": 29.270099
+     },
+     "ent_weight": 0.0,
+     "pair_weight": 0.1667,
+     "val_acc": 0.26666666666666666,
+     "val_macro_f1": 0.16117216117216118
+    }
+   ],
+   "train_time_sec": 25.8,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "prototype_usage": null,
+   "gate_summary": null,
+   "kmeans_info": null,
+   "checkpoint": "ckpt_resnet18_kd.pt"
+  },
+  {
+   "student": "asf_kd",
+   "config": {
+    "model_key": "asf",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "small",
+    "asf_gate_ent": 0.05,
+    "asf_gate_ent_anneal": 0,
+    "asf_gate_descriptor": "gap",
+    "cmp_kmeans_init": false,
+    "cmp_agg": "lse",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "kd_alpha": 0.5,
+    "kd_T": 4.0,
+    "cmp_n_proto": 1,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11603573,
+    "trainable": 11603573
+   },
+   "best_val_acc": 0.4667,
+   "best_val_macro_f1": 0.2716,
+   "delta_vs_CE_s0": -0.6791,
+   "sec_per_epoch": [
+    25.02
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 16.672289098103843,
+     "epoch_sec": 25.02,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.019067,
+      "div": 0.0,
+      "pair": 0.0,
+      "kd": 29.415092
+     },
+     "ent_weight": 0.05,
+     "pair_weight": 0.1667,
+     "val_acc": 0.4666666666666667,
+     "val_macro_f1": 0.27156862745098037
+    }
+   ],
+   "train_time_sec": 25.9,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "prototype_usage": null,
+   "gate_summary": {
+    "gate_mean": [
+     0.1278,
+     0.1293,
+     0.1184,
+     0.1294,
+     0.123,
+     0.1399,
+     0.1221,
+     0.11
+    ],
+    "gate_std": [
+     0.00441,
+     0.00586,
+     0.00408,
+     0.00655,
+     0.00472,
+     0.0041,
+     0.00418,
+     0.00543
+    ],
+    "max_mean": 0.1399
+   },
+   "kmeans_info": null,
+   "checkpoint": "ckpt_asf_kd.pt"
+  },
+  {
+   "student": "cmp_kd",
+   "config": {
+    "model_key": "cmp",
+    "num_classes": 45,
+    "seed": 0,
+    "epochs": 1,
+    "batch_size": 128,
+    "lr_backbone": 0.0001,
+    "lr_head": 0.001,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "early_stop_patience": 5,
+    "amp": true,
+    "num_workers": 0,
+    "input_size": 256,
+    "asf_fixed_fusion": false,
+    "asf_feature_dim": 128,
+    "asf_detail_mode": "haar",
+    "asf_out_init": "zero",
+    "asf_gate_ent": 0.0,
+    "asf_gate_ent_anneal": 0,
+    "asf_gate_descriptor": "gap",
+    "cmp_kmeans_init": true,
+    "cmp_agg": "hardmax",
+    "cmp_pair_loss": false,
+    "cmp_pair_margin": 0.1,
+    "cmp_pair_weight": 0.5,
+    "cmp_pair_warmup": 3,
+    "kd_alpha": 0.5,
+    "kd_T": 4.0,
+    "cmp_n_proto": 2,
+    "cmp_confusion": false,
+    "cmp_conf_margin": 0.3,
+    "cmp_conf_weight": 0.5,
+    "cmp_diversity": false,
+    "cmp_div_weight": 0.01,
+    "cmp_embed_dim": 512,
+    "label_smoothing": 0.0,
+    "extra": {}
+   },
+   "params": {
+    "total": 11485249,
+    "trainable": 11485249
+   },
+   "best_val_acc": 0.9,
+   "best_val_macro_f1": 0.8979,
+   "delta_vs_CE_s0": -0.0524,
+   "sec_per_epoch": [
+    27.62
+   ],
+   "history": [
+    {
+     "epoch": 0,
+     "train_loss": 13.974678056504992,
+     "epoch_sec": 27.62,
+     "lr": 0.0,
+     "aux": {
+      "gate_ent": 0.0,
+      "div": 0.0,
+      "pair": 0.0,
+      "kd": 25.451356
+     },
+     "ent_weight": 0.0,
+     "pair_weight": 0.1667,
+     "val_acc": 0.9,
+     "val_macro_f1": 0.8978621378621379
+    }
+   ],
+   "train_time_sec": 28.6,
+   "best_epoch": 0,
+   "executed_epochs": 1,
+   "peak_mem_gib": null,
+   "prototype_usage": {
+    "n_seen": 30,
+    "assign_per_class_proto": [
+     [
+      6,
+      0
+     ],
+     [
+      5,
+      1
+     ],
+     [
+      4,
+      2
+     ],
+     [
+      2,
+      4
+     ],
+     [
+      6,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      0
+     ]
+    ],
+    "unused_proto_classes": 40,
+    "minority_ratio": 0.16666666666666666,
+    "max_inter_proto_cos_mean": 0.12629564354817072
+   },
+   "gate_summary": null,
+   "kmeans_info": {
+    "n_embed": 225,
+    "mean_inertia": 11.020111465454102,
+    "elapsed_sec": 4.7
+   },
+   "checkpoint": "ckpt_cmp_kd.pt"
+  }
+ ]
+}
