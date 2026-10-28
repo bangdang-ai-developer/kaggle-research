@@ -1,0 +1,32 @@
+{
+  "project": "V2 round — nghiên cứu mở rộng sau v1 (NWPU-RESISC45)",
+  "created": "2026-10-28",
+  "locked_before": "071-eval-3seed (đánh giá test mở rộng) — chạy SAU khi plan này commit",
+  "screening_results": {
+    "080-cmp-v2": {
+      "CMP_P_hardmax": {"val_f1": 0.9394, "inter_cos": 0.7254, "note": "hard-max phá collapse (xác nhận D2/D3) nhưng F1 dưới C2 v1 −0.47%"},
+      "CMP_PG_pair": {"val_f1": 0.9416, "inter_cos": 0.7373, "note": "pair loss đúng chiều (giảm 0.457→0.048) nhưng F1 −0.25% vs C2 v1"},
+      "verdict": "KHÔNG ĐẠT mốc >0.9441 — CMP dừng đúng trần (P + PG)"
+    },
+    "090-asf-v2": {
+      "A1fix_small_control": {"val_f1": 0.9425},
+      "ASF_E_energy": {"val_f1": 0.9464, "note": "vượt control +0.39% nhưng KHÔNG vượt A2fix-ent GAP-gate 0.9472"},
+      "ASF_EA_anneal": {"val_f1": 0.9454, "note": "anneal không giúp trong khung 8 epoch"},
+      "verdict": "KHÔNG ĐẠT mốc >0.9472 — ASF giữ v1"
+    }
+  },
+  "decision": {
+    "model_chinh": "GIỮ V1: ASF A2fix-ent (val 0.9543±0.0036 / test 0.9550) + CMP C2 (val 0.9499±0.0010 / test 0.9515)",
+    "ly_do": "Không candidate v2 nào vượt cấu hình v1 tương ứng ở cùng điều kiện; theo spec mục 12 giữ v1 làm model nộp chính, v2 = nghiên cứu bổ sung (diagnostics + negative results)",
+    "khong_chon_bang_test": true
+  },
+  "expanded_eval": {
+    "muc_dich": "Mở rộng báo cáo: test metrics cho ĐỦ 21 checkpoints (7 model × 3 seed) theo kế hoạch cố định này — không dùng kết quả để chọn lại model",
+    "checkpoints": "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_<model>_s<seed>.pt + outputs/resisc45-final-proposed-asf-cmp-3-seeds/ckpt_<variant>_s<seed>.pt",
+    "protocol": "giữ nguyên split cc70020a, eval transform, batch 256; báo mean±std theo seed cho ACC/macro-F1; paired ASF-vs-B1 và CMP-vs-B1 theo seed",
+    "phu": "confusion matrix chỉ cho best-val seed (đã có từ 070b); robustness giữ nguyên 070b"
+  },
+  "gpu_budget_v2_remaining": "~4.5h của 6h (diagnostics local 0h + screening 080/090 ~1.2h + eval ~0.5h + dự phòng)",
+  "demo": "Streamlit local sau eval — mục 12/14 spec",
+  "docs_sync": "13 mục sửa tài liệu v1 theo checklist spec mục 11 — sau eval, kèm changelog"
+}
