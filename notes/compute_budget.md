@@ -1,5 +1,20 @@
 # Compute Budget — CHỐT TỪ SỐ ĐO THẬT (pilot v2, T4, 2026-10-26)
 
+## ĐỐI CHIẾU THỰC TẾ (2026-10-28, sau khi hoàn tất toàn bộ thí nghiệm)
+
+| Hạng mục | Dự toán | Thực tế |
+|---|---|---|
+| Pilot (020 v1 hủy + manual run) | 1.0 | ~1.2 |
+| Screening 030/040/050 + fix 040b/050b | 2.15 | ~2.55 (thêm vòng fix duyệt) |
+| Final 060a baselines ×3 seed | 4.7 | 5.0 |
+| Final 060b proposed ×3 seed | 0.9 | 1.4 |
+| Eval 070 (v1 fail infra + 070b) | 0.5 | 0.7 |
+| Stage/boot/overhead | 0.3 | ~0.5 |
+| **Tổng GPU** | **~9.7** | **~11.3** |
+| CPU (010 audit ×8 phiên) | 0 | ~3h (miễn phí quota) |
+
+Vượt dự toán ~15% do 1 vòng screening-fix duyệt thêm + 2 kernel fail hạ tầng. **Tổng vẫn dưới trần 30h/tuần** (khoảng 37% quota tuần).
+
 **Trần:** Kaggle GPU quota ~30h/tuần. **Số liệu nguồn:** `outputs/resisc45-pilot-v2-local-stage/pilot_report.json` (manual draft run trên T4, stage local dataset, split `cc70020a`).
 
 ## Số đo thật (T4, batch 128, AMP, staged local)

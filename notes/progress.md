@@ -1,5 +1,17 @@
 # Progress Log
 
+## 2026-10-28 — DỰ ÁN HOÀN TẤT: toàn pipeline + tài liệu bàn giao
+
+**Kết quả chính thức (TEST, 4.725 ảnh, 1 lần duy nhất):** ASF **0.9549 acc / 0.9550 F1 — THẮNG backbone gốc B1 (0.9530/0.9531, +0.19%)** và B2; nhất quán val paired 3/3 seed (+0.39% mean, p≈0.05). CMP 0.9515/0.9515 — hòa B1, **chưa thắng** (negative result: prototype collapse inter-cos=1.0 bền vững qua 5 cấu hình). B4 ConvNeXt-T 0.9678 trần (đắt 3.8×).
+
+**GPU thực dùng:** ~10h/30h tuần (060a 5.0 + 060b 1.4 + screening ~2.5 + pilot ~1.2 + 070 ~0.7) — dưới trần 11h đã chốt. CPU: audit ×8 phiên ≈ 3h (miễn phí).
+
+**Bộ tài liệu bàn giao:** results_summary.md (số chính thức), report_outline.md, slides_outline.md, reviewer_checklist.md, limitations.md, reproduction.md, compute_budget.md (actual), figures ×6 (val bar, F1-latency, robustness delta, gate distribution, class dist, samples).
+
+**Việc còn mở cho TV2:** vẽ 2 sơ đồ kiến trúc (ASF/CMP); viết report + slides theo outline; quyết định demo app (mục 14 spec — chưa làm); soát reviewer_checklist.md.
+
+---
+
 ## 2026-10-26 (chiều) — GIAI ĐOẠN B HOÀN THÀNH: pilot PASS trên T4
 
 **Kết quả pilot (bằng chứng: `outputs/resisc45-pilot-v2-local-stage/pilot_report.json`):**
