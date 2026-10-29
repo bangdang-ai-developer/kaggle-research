@@ -1,0 +1,161 @@
+{
+ "A_fairness": {
+  "config_diffs": {
+   "resnet18_s0": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "epoch_saved",
+    "kd_T",
+    "kd_alpha"
+   ],
+   "resnet18_s1": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "epoch_saved",
+    "kd_T",
+    "kd_alpha"
+   ],
+   "resnet18_s2": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "epoch_saved",
+    "kd_T",
+    "kd_alpha"
+   ],
+   "asf_s0": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "epoch_saved",
+    "kd_T",
+    "kd_alpha"
+   ],
+   "asf_s1": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "epoch_saved",
+    "kd_T",
+    "kd_alpha"
+   ],
+   "asf_s2": [
+    "asf_gate_descriptor",
+    "asf_gate_ent_anneal",
+    "cmp_agg",
+    "cmp_pair_loss",
+    "cmp_pair_margin",
+    "cmp_pair_warmup",
+    "cmp_pair_weight",
+    "kd_T",
+    "kd_alpha"
+   ]
+  },
+  "key_fields": {
+   "epochs": {
+    "ce": 15,
+    "kd": 15,
+    "equal": true
+   },
+   "batch_size": {
+    "ce": 128,
+    "kd": 128,
+    "equal": true
+   },
+   "lr_backbone": {
+    "ce": 0.0001,
+    "kd": 0.0001,
+    "equal": true
+   },
+   "lr_head": {
+    "ce": 0.001,
+    "kd": 0.001,
+    "equal": true
+   },
+   "weight_decay": {
+    "ce": 0.0001,
+    "kd": 0.0001,
+    "equal": true
+   },
+   "amp": {
+    "ce": true,
+    "kd": true,
+    "equal": true
+   },
+   "warmup_frac": {
+    "ce": 0.05,
+    "kd": 0.05,
+    "equal": true
+   },
+   "early_stop_patience": {
+    "ce": 5,
+    "kd": 5,
+    "equal": true
+   },
+   "input_size": {
+    "ce": 256,
+    "kd": 256,
+    "equal": true
+   },
+   "label_smoothing": {
+    "ce": 0.0,
+    "kd": 0.0,
+    "equal": true
+   },
+   "num_workers": {
+    "ce": 4,
+    "kd": 4,
+    "equal": true
+   },
+   "seed": {
+    "ce": 0,
+    "kd": 0,
+    "equal": true
+   }
+  }
+ },
+ "B_merge": {
+  "resnet18_kd_s0_vs_s1": [
+   "epoch_saved"
+  ],
+  "resnet18_kd_s0_vs_s2": [
+   "epoch_saved"
+  ],
+  "asf_kd_s0_vs_s1": [
+   "epoch_saved"
+  ],
+  "asf_kd_s0_vs_s2": [
+   "epoch_saved"
+  ]
+ },
+ "B_teacher_hash_logs": {
+  "110b": true,
+  "111": true
+ },
+ "C_git_log_gate_fix": [
+  "896f5cf21c44a06f032e6d73d13249a951474dff 2026-10-28T11:51:16+07:00 071 v1 failed on my refactor bug (_gate_input gap branch dropped self.gate projection); 071b pushed as new kernel with fix, verified both gate paths forward correctly"
+ ],
+ "C_last_commit_before_110b": "5ccb6d9e17212747c89472eaa1fbe7ab9af6f5d5 2026-10-28T08:43:51+07:00 070 final evaluation kernel: test metrics (7 models, labels fixed 45), per-image predictions + probs, confusion PNGs, latency/throughput, 6 corruption robustness matrix. Smoke PASS. Pushed"
+}

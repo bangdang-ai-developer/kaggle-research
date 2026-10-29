@@ -1,0 +1,42 @@
+{
+ "checks": {
+  "B1-CE s2": {
+   "top3": [
+    [
+     "airplane",
+     1.0
+    ],
+    [
+     "palace",
+     0.0
+    ],
+    [
+     "airport",
+     0.0
+    ]
+   ],
+   "latency_ms": 23.0,
+   "probs_sum": 1.0
+  },
+  "ASF-KD s1": {
+   "top3": [
+    [
+     "airplane",
+     1.0
+    ],
+    [
+     "airport",
+     0.0
+    ],
+    [
+     "harbor",
+     0.0
+    ]
+   ],
+   "latency_ms": 14.7,
+   "probs_sum": 1.0
+  }
+ },
+ "pass": true,
+ "sample": "/Users/bangdang/Project/kaggle-research/data/raw/punfake---resisc45/NWPU-RESISC45/airplane/airplane_001.jpg"
+}

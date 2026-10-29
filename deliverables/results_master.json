@@ -1,0 +1,429 @@
+{
+ "models": {
+  "smallcnn": {
+   "display": "B0 SmallCNN (from scratch)",
+   "params_total_m": 0.29,
+   "val_f1_3seed": {
+    "mean": 0.5821,
+    "std": 0.0032
+   },
+   "val_acc_3seed": {
+    "mean": 0.5889,
+    "std": 0.0046
+   },
+   "train_time_h_mean": 0.344,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.5946,
+    "std": 0.0065
+   },
+   "test_3seed_f1": {
+    "mean": 0.5904,
+    "std": 0.0064
+   },
+   "test_3seed_precision": {
+    "mean": 0.6064,
+    "std": 0.0035
+   },
+   "test_3seed_recall": {
+    "mean": 0.5946,
+    "std": 0.0065
+   },
+   "test_bestvalseed": {
+    "seed": 0,
+    "acc": 0.6008,
+    "f1": 0.5955,
+    "precision": 0.6077,
+    "recall": 0.6009
+   },
+   "latency_ms_bestvalseed": 2.5224159955978394,
+   "is_teacher": false
+  },
+  "resnet18": {
+   "display": "B1 ResNet18-CE",
+   "params_total_m": 11.2,
+   "val_f1_3seed": {
+    "mean": 0.9504,
+    "std": 0.0021
+   },
+   "val_acc_3seed": {
+    "mean": 0.9504,
+    "std": 0.0021
+   },
+   "train_time_h_mean": 0.2,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9537,
+    "std": 0.0019
+   },
+   "test_3seed_f1": {
+    "mean": 0.9537,
+    "std": 0.0019
+   },
+   "test_3seed_precision": {
+    "mean": 0.9544,
+    "std": 0.002
+   },
+   "test_3seed_recall": {
+    "mean": 0.9537,
+    "std": 0.0019
+   },
+   "test_bestvalseed": {
+    "seed": 2,
+    "acc": 0.953,
+    "f1": 0.9531,
+    "precision": 0.9538,
+    "recall": 0.953
+   },
+   "latency_ms_bestvalseed": 2.5557119846343994,
+   "is_teacher": false
+  },
+  "mobilenetv3s": {
+   "display": "B2 MobileNetV3-S",
+   "params_total_m": 1.56,
+   "val_f1_3seed": {
+    "mean": 0.9424,
+    "std": 0.001
+   },
+   "val_acc_3seed": {
+    "mean": 0.9423,
+    "std": 0.001
+   },
+   "train_time_h_mean": 0.18,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9469,
+    "std": 0.0015
+   },
+   "test_3seed_f1": {
+    "mean": 0.9469,
+    "std": 0.0015
+   },
+   "test_3seed_precision": {
+    "mean": 0.9478,
+    "std": 0.0013
+   },
+   "test_3seed_recall": {
+    "mean": 0.9469,
+    "std": 0.0015
+   },
+   "test_bestvalseed": {
+    "seed": 0,
+    "acc": 0.9475,
+    "f1": 0.9476,
+    "precision": 0.9487,
+    "recall": 0.9475
+   },
+   "latency_ms_bestvalseed": 4.5987842082977295,
+   "is_teacher": false
+  },
+  "efficientnetb0": {
+   "display": "B3 EfficientNet-B0",
+   "params_total_m": 4.07,
+   "val_f1_3seed": {
+    "mean": 0.958,
+    "std": 0.0005
+   },
+   "val_acc_3seed": {
+    "mean": 0.958,
+    "std": 0.0005
+   },
+   "train_time_h_mean": 0.331,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9608,
+    "std": 0.0015
+   },
+   "test_3seed_f1": {
+    "mean": 0.9607,
+    "std": 0.0015
+   },
+   "test_3seed_precision": {
+    "mean": 0.9612,
+    "std": 0.0014
+   },
+   "test_3seed_recall": {
+    "mean": 0.9608,
+    "std": 0.0015
+   },
+   "test_bestvalseed": {
+    "seed": 0,
+    "acc": 0.9602,
+    "f1": 0.9601,
+    "precision": 0.9605,
+    "recall": 0.9602
+   },
+   "latency_ms_bestvalseed": 7.355039834976196,
+   "is_teacher": false
+  },
+  "convnextt": {
+   "display": "B4 ConvNeXt-T (teacher)",
+   "params_total_m": 27.85,
+   "val_f1_3seed": {
+    "mean": 0.9671,
+    "std": 0.0019
+   },
+   "val_acc_3seed": {
+    "mean": 0.9672,
+    "std": 0.0019
+   },
+   "train_time_h_mean": 0.616,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9678,
+    "std": 0.0002
+   },
+   "test_3seed_f1": {
+    "mean": 0.9677,
+    "std": 0.0002
+   },
+   "test_3seed_precision": {
+    "mean": 0.9681,
+    "std": 0.0001
+   },
+   "test_3seed_recall": {
+    "mean": 0.9678,
+    "std": 0.0002
+   },
+   "test_bestvalseed": {
+    "seed": 2,
+    "acc": 0.9678,
+    "f1": 0.9677,
+    "precision": 0.9682,
+    "recall": 0.9678
+   },
+   "latency_ms_bestvalseed": 5.964560031890869,
+   "is_teacher": true
+  },
+  "ASF_A2fix_ent": {
+   "display": "ASF-CE (proposed)",
+   "params_total_m": 11.6,
+   "val_f1_3seed": {
+    "mean": 0.9543,
+    "std": 0.0036
+   },
+   "val_acc_3seed": {
+    "mean": 0.9543,
+    "std": 0.0035
+   },
+   "train_time_h_mean": 0.209,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.952,
+    "std": 0.0026
+   },
+   "test_3seed_f1": {
+    "mean": 0.952,
+    "std": 0.0026
+   },
+   "test_3seed_precision": {
+    "mean": 0.9529,
+    "std": 0.0025
+   },
+   "test_3seed_recall": {
+    "mean": 0.952,
+    "std": 0.0026
+   },
+   "test_bestvalseed": {
+    "seed": 2,
+    "acc": 0.9549,
+    "f1": 0.955,
+    "precision": 0.9558,
+    "recall": 0.9549
+   },
+   "latency_ms_bestvalseed": 3.719375967979431,
+   "is_teacher": false
+  },
+  "CMP_C2": {
+   "display": "CMP-CE (proposed)",
+   "params_total_m": 11.49,
+   "val_f1_3seed": {
+    "mean": 0.9499,
+    "std": 0.001
+   },
+   "val_acc_3seed": {
+    "mean": 0.9501,
+    "std": 0.001
+   },
+   "train_time_h_mean": 0.197,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.951,
+    "std": 0.0012
+   },
+   "test_3seed_f1": {
+    "mean": 0.9509,
+    "std": 0.0012
+   },
+   "test_3seed_precision": {
+    "mean": 0.9515,
+    "std": 0.0012
+   },
+   "test_3seed_recall": {
+    "mean": 0.951,
+    "std": 0.0012
+   },
+   "test_bestvalseed": {
+    "seed": 1,
+    "acc": 0.9515,
+    "f1": 0.9515,
+    "precision": 0.9521,
+    "recall": 0.9515
+   },
+   "latency_ms_bestvalseed": 2.558127999305725,
+   "is_teacher": false
+  },
+  "resnet18_kd": {
+   "display": "ResNet18-KD",
+   "params_total_m": 11.2,
+   "val_f1_3seed": {
+    "mean": 0.9552,
+    "std": 0.0003
+   },
+   "val_acc_3seed": {
+    "mean": 0.9552,
+    "std": 0.0003
+   },
+   "train_time_h_mean": 0.384,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9602,
+    "std": 0.002
+   },
+   "test_3seed_f1": {
+    "mean": 0.9601,
+    "std": 0.0019
+   },
+   "test_3seed_precision": {
+    "mean": 0.9607,
+    "std": 0.0018
+   },
+   "test_3seed_recall": {
+    "mean": 0.9602,
+    "std": 0.002
+   },
+   "latency_ms_3seed_mean": 2.53,
+   "kd": {
+    "alpha": 0.5,
+    "T": 4.0,
+    "teacher": "ConvNeXt-T s2 (val F1 0.9691, sha 9627ca43)"
+   },
+   "test_bestvalseed": {
+    "seed": 1,
+    "acc": 0.9613,
+    "f1": 0.9613,
+    "precision": 0.9618,
+    "recall": 0.9613
+   },
+   "latency_ms_bestvalseed": 2.582848072052002
+  },
+  "asf_kd": {
+   "display": "ASF-KD (proposed)",
+   "params_total_m": 11.6,
+   "val_f1_3seed": {
+    "mean": 0.9576,
+    "std": 0.0011
+   },
+   "val_acc_3seed": {
+    "mean": 0.9577,
+    "std": 0.0011
+   },
+   "train_time_h_mean": 0.398,
+   "executed_epochs": {
+    "0": 15,
+    "1": 15,
+    "2": 15
+   },
+   "test_3seed_acc": {
+    "mean": 0.9591,
+    "std": 0.0014
+   },
+   "test_3seed_f1": {
+    "mean": 0.9591,
+    "std": 0.0014
+   },
+   "test_3seed_precision": {
+    "mean": 0.9596,
+    "std": 0.0014
+   },
+   "test_3seed_recall": {
+    "mean": 0.9591,
+    "std": 0.0014
+   },
+   "latency_ms_3seed_mean": 3.76,
+   "kd": {
+    "alpha": 0.5,
+    "T": 4.0,
+    "teacher": "ConvNeXt-T s2 (val F1 0.9691, sha 9627ca43)"
+   },
+   "test_bestvalseed": {
+    "seed": 1,
+    "acc": 0.9575,
+    "f1": 0.9574,
+    "precision": 0.9579,
+    "recall": 0.9575
+   },
+   "latency_ms_bestvalseed": 3.822719931602478
+  }
+ },
+ "kd_overhead": {
+  "teacher_inference_overhead": "KD epoch ~100-104s vs CE ~49-53s (teacher forward online)",
+  "teacher_training_cost_history": {
+   "model": "B4 ConvNeXt-T",
+   "train_time_h_per_run": 0.616,
+   "note": "đã chi trong v1, tái sử dụng làm teacher — không train lại"
+  }
+ },
+ "audit": {
+  "fairness": "LOẠI A — 12 trường protocol GIỐNG hệt giữa CE/KD; khác biệt duy nhất kd_alpha/kd_T (biến điều tra). notes/v4_audit.json",
+  "seed0_merge": "HỢP LỆ — config s0 vs s1/s2 chỉ khác epoch_saved; teacher hash 9627ca43 xác nhận logs cả 2 kernel; code nhúng notebook 110b đúng (không nhiễm bug _gate_input)"
+ },
+ "protocol": {
+  "split_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a",
+  "epochs_max": 15,
+  "early_stop_patience": 5,
+  "batch": 128,
+  "optimizer": "AdamW lr 1e-4/1e-3 wd 1e-4 cosine warmup 5%",
+  "checkpoint_rule": "val macro-F1",
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "amp": true,
+  "input": "256x256 ImageNet-norm RRC+hflip+vflip",
+  "test_caveat": "test đã quan sát qua v1/v2 — v3 là nghiên cứu mở rộng, không chọn cấu hình bằng test"
+ }
+}

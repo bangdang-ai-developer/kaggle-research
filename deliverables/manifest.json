@@ -1,0 +1,50 @@
+{
+ "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_resnet18_s2.pt": {
+  "size_bytes": 44879563,
+  "sha256": "de36dac4188c0f667fb3ad6aabdf5b19b1568d1a32c6f071ae632793a78f9ca9"
+ },
+ "outputs/resisc45-final-proposed-asf-cmp-3-seeds/ckpt_ASF_A2fix_ent_s1.pt": {
+  "size_bytes": 46522043,
+  "sha256": "61bf5e2d48ec2981b6f0bbfcbb6c9f9f11e5c5b3fc0ac35c59541648a23ad5b7"
+ },
+ "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_convnextt_s2.pt": {
+  "size_bytes": 111488299,
+  "sha256": "9627ca43dc5a39ca7b66e570340c29d5c980972bda35c83982a3be00455ea501"
+ },
+ "outputs/resisc45-screen-kd-resnet18-asf-cmp-v2/ckpt_resnet18_kd.pt": {
+  "size_bytes": 44879819,
+  "sha256": "9712659f280cbe6ee9077ebc3a7c161c5ee2af41d2af1ef78f0771ef121aa824"
+ },
+ "outputs/resisc45-kd-final-seeds-1-2/ckpt_asf_kd_s1.pt": {
+  "size_bytes": 46520975,
+  "sha256": "228917f649ecfd6390587995bb32bda13c28d700595f87d968fe46d1f8e4475b"
+ },
+ "outputs/resisc45-data-audit-split-manifest/split_manifest.csv": {
+  "size_bytes": 2159094,
+  "sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a"
+ },
+ "outputs/resisc45-data-audit-split-manifest/class_order.json": {
+  "size_bytes": 854,
+  "sha256": "fa565d58170974ba17287bd0eebd7a167e666ad52cb9f66d09b3657a9bfd2cbc"
+ },
+ "outputs/resisc45-final-evaluation-v2-offline/test_report.json": {
+  "size_bytes": 140869,
+  "sha256": "4985c62107135c112e8a433bd3c1467ca76d3e336b0f8dc9649bc3481994b790"
+ },
+ "outputs/resisc45-expanded-eval-3-seeds-v2-fixed/test_3seed_report.json": {
+  "size_bytes": 8595,
+  "sha256": "738c5a682d5d13f01586f80a6994b146963d12222df4e7c1d373bcbe3805a756"
+ },
+ "outputs/resisc45-eval-kd-3-seeds-v2-fixed-sources/test_kd_3seed_report.json": {
+  "size_bytes": 3161,
+  "sha256": "ab1b981f2340f4982d43de370ee6397bf1d3a1de6b6a2e792687907a1a9d3fd6"
+ },
+ "outputs/resisc45-screen-kd-resnet18-asf-cmp-v2/kd_screen_report.json": {
+  "size_bytes": 23313,
+  "sha256": "db775e4013e536e41facc8677e73dcaf950cb606ebaf09aafb9286b5efaf3434"
+ },
+ "outputs/resisc45-kd-final-seeds-1-2/kd_final_report.json": {
+  "size_bytes": 29089,
+  "sha256": "4429698faac206d668f7861154107054c4bdaf4db1cec787769239ac653117e8"
+ }
+}
