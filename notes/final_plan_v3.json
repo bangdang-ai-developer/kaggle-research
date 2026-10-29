@@ -1,0 +1,37 @@
+{
+  "project": "V3 — Knowledge Distillation từ ConvNeXt-T (NWPU-RESISC45)",
+  "created": "2026-10-29",
+  "locked_before": "111-kd-final (seeds 1,2) + 112-eval-3seed-kd — chạy SAU khi plan này commit",
+  "teacher": {
+    "model": "ConvNeXt-T",
+    "selection": "best val macro-F1 trong 3 seed 060a (không test)",
+    "seed": 2,
+    "val_f1": 0.9691,
+    "val_acc": 0.9692,
+    "checkpoint_sha256_prefix": "9627ca43",
+    "frozen": true,
+    "ghi_chu_chi_phi": "teacher training cost lịch sử nằm trong 060a (đã ghi riêng); v3 chỉ tính teacher inference overhead (~2× CE s/epoch)"
+  },
+  "kd_config": {"alpha": 0.5, "T": 4.0, "loss": "(1-α)·CE + α·T²·KL(teacher‖student), batchmean, FP32"},
+  "screening_results_seed0": {
+    "resnet18_kd": {"val_f1": 0.9550, "ce_s0": 0.9483, "delta": "+0.67%"},
+    "asf_kd": {"val_f1": 0.9565, "ce_s0": 0.9507, "delta": "+0.58%", "gate": "max_mean 0.46, std LL4 0.26 — phân hóa theo ảnh"},
+    "cmp_kd": {"val_f1": 0.9448, "ce_s0": 0.9503, "delta": "−0.55%", "note": "KD loss không hội tụ tốt (24→18.5), prototype gần collapse (0.92) — DỪNG CMP, không đưa final"}
+  },
+  "decision": {
+    "final_runs": [
+      {"student": "resnet18_kd", "seeds_remaining": [1, 2]},
+      {"student": "asf_kd", "seeds_remaining": [1, 2]}
+    ],
+    "cmp": "KHÔNG đưa final — KD negative cho hard-max head; giữ kết luận v1/v2",
+    "controls_ce": "REUSE 060a/060b đủ 3 seed (cùng source/init/epochs/optimizer/ckpt-rule) — không chạy lại"
+  },
+  "eval_plan": {
+    "kernel": "112-eval-kd-3seed",
+    "test_3seed": "RN18-KD + ASF-KD × 3 seed (6 checkpoints) — so paired với CE 3-seed đã có (071b)",
+    "metrics": "ACC, macro P/R/F1, mean±std, paired diffs theo seed, latency",
+    "caveat": "test đã quan sát v1/v2 — v3 là nghiên cứu mở rộng, công khai trong báo cáo"
+  },
+  "epochs": 15,
+  "gpu_budget_v3": {"pilot": 0.6, "screening": 1.5, "final_seeds12": 1.7, "eval": 0.4, "tổng_dự_kiến": "~4.2h trong hạn mức 6h"}
+}
