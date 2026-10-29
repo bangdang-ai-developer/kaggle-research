@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-10-29 (v3) — KD round HOÀN TẤT: distillation cải thiện thật, nhất quán 3/3 seed trên test
+
+**Pipeline:** diagnostics K1–K5 PASS → pilot 100b (teacher verify hash `9627ca43`, val acc 0.9692; KD 100–104s/epoch) → screening 110b (RN18-KD +0.67%, ASF-KD +0.58% vs CE s0; CMP-KD negative → dừng) → final 111 (seeds 1,2) → test eval 112c (6 checkpoints).
+
+**Kết quả TEST 3-seed (`outputs/resisc45-eval-kd-3-seeds-v2-fixed-sources/test_kd_3seed_report.json`):**
+- ResNet18-KD **0.9602±0.0020** (paired vs CE +0.65%, 3/3 seed)
+- ASF-KD **0.9591±0.0014** (paired vs CE +0.70%, 3/3 seed)
+- ASF-KD ≈ RN18-KD trên test (−0.10%); trên val ASF-KD +0.24% — lợi ích kiến trúc thu hẹp dưới KD, đóng góp chính là distillation
+- Models nhỏ tốt nhất: ResNet18-KD gần B3 EffB0 (0.9608) với latency 1/3; B4 vẫn trần
+
+**Số liệu đầy đủ:** `notes/results_summary.md` §V3. **Demo:** thêm B1-KD + ASF-KD (checkpoint chọn theo val — ASF-KD s1 0.9587).
+
+**Bài học vận hành v3:** kernel có pretrained build → internet BẮT BUỘC true; checkpoint naming phải thống nhất (110b không suffix seed); smoke local phải chạy đủ tới cell kiểm tra model (không dừng sớm ở assert).
+
+---
+
 ## 2026-10-28 (v2) — Vòng nghiên cứu mở rộng HOÀN TẤT
 
 **Diagnostics** (`scripts/v2_diagnostics.py` → `notes/v2_diagnostics.json`):

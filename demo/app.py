@@ -28,9 +28,13 @@ from models import TrainConfig, build_model, eval_augment  # noqa: E402
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 MODELS = {
-    "B1 ResNet18 (baseline)": ("resnet18", {}, "resisc45-final-baselines-b0-b4-3-seeds", "ckpt_resnet18_s2.pt"),
-    "ASF A2fix-ent (proposed v1)": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
-                                    "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_ASF_A2fix_ent_s2.pt"),
+    "B1 ResNet18 (baseline CE)": ("resnet18", {}, "resisc45-final-baselines-b0-b4-3-seeds", "ckpt_resnet18_s2.pt"),
+    "B1 ResNet18-KD (distilled v3)": ("resnet18", dict(kd_alpha=0.5, kd_T=4.0),
+                                      "resisc45-screen-kd-resnet18-asf-cmp-v2", "ckpt_resnet18_kd.pt"),
+    "ASF A2fix-ent (proposed v1 CE)": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
+                                       "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_ASF_A2fix_ent_s1.pt"),
+    "ASF-KD (distilled v3, best val)": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
+                                        "resisc45-kd-final-seeds-1-2", "ckpt_asf_kd_s1.pt"),
     "CMP C2 (proposed v1)": ("cmp", dict(cmp_n_proto=2),
                              "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_CMP_C2_s1.pt"),
 }

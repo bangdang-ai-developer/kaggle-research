@@ -1,5 +1,38 @@
 # Results Summary — số liệu chính thức (đã verify từ artifacts)
 
+## V3 — Knowledge Distillation từ ConvNeXt-T (nghiên cứu mở rộng, 2026-10-29)
+
+**Setup:** teacher ConvNeXt-T s2 (val F1 0.9691, hash `9627ca43`, frozen); KD T=4, α=0.5; 15 epoch; students khởi tạo ImageNet pretrained; teacher chỉ trong training. Test đã quan sát v1/v2 → v3 là nghiên cứu mở rộng (công khai).
+
+### TEST 3-seed (kernel 112c, `test_kd_3seed_report.json`)
+
+| Model | TEST Acc | TEST F1 | Latency ms |
+|---|---|---|---|
+| **ResNet18-KD** | **0.9602 ± 0.0020** | **0.9601 ± 0.0019** | 2.53 |
+| **ASF-KD** | 0.9591 ± 0.0014 | 0.9591 ± 0.0014 | 3.76 |
+| B1 ResNet18 (CE) | 0.9537 ± 0.0019 | 0.9537 ± 0.0019 | 2.52 |
+| ASF (CE) | 0.9520 ± 0.0026 | 0.9520 ± 0.0026 | 3.82 |
+| B3 EffB0 | 0.9608 ± 0.0015 | 0.9607 ± 0.0015 | 7.40 |
+| B4 ConvNeXt-T | 0.9678 ± 0.0002 | 0.9677 ± 0.0002 | 6.87 |
+
+### Paired KD − CE trên test (F1, theo seed)
+
+| So sánh | Diffs theo seed | Mean | Wins |
+|---|---|---|---|
+| RN18-KD − RN18-CE | [+0.58%, +0.55%, +0.81%] | **+0.65%** | **3/3** |
+| ASF-KD − ASF-CE | [+0.91%, +0.72%, +0.48%] | **+0.70%** | **3/3** |
+| ASF-KD − RN18-KD | (per-seed) | ≈ −0.10% | kiến trúc ASF ≈ RN18 dưới KD |
+
+### Trả lời RQ v3
+
+- **RQ1: KD CÓ cải thiện** — +0.65% (RN18) và +0.70% (ASF) test F1, nhất quán 3/3 seed, val cũng tăng cùng hướng (RN18-KD 0.9552±0.0003; ASF-KD 0.9576±0.0011 — val F1 cao nhất project).
+- **RQ2: dưới KD, ASF ≈ RN18-KD trên test** (−0.10%); trên val ASF-KD vẫn +0.24%. Lợi ích kiến trúc ASF thu hẹp mạnh dưới KD — đóng góp chính của v3 là distillation, không phải kiến trúc.
+- **RQ3:** chi phí KD chỉ ở training (teacher online, ~2× s/epoch); inference latency gần như không đổi (3.76 vs 3.82 ms ASF; 2.53 vs 2.52 RN18) — student độc lập teacher. Teacher training cost lịch sử ghi riêng 060a.
+- CMP: không đưa KD final (KD loss không hội tụ tốt trên hard-max head — screening 110b, negative result).
+- **Models tốt nhất nhóm nhỏ:** ResNet18-KD (0.9602) vượt B1-CE +0.65% và gần B3 EffB0 (0.9608) với latency 1/3; ASF-KD 0.9591. B4 vẫn trần (0.9678).
+
+
+
 **Ngày:** 2026-10-28 · **Dataset:** NWPU-RESISC45 31.500 ảnh, split `cc70020a` (train 23.626 / val 3.149 / test 4.725)
 **Protocol:** 15 epoch, early-stop 5, checkpoint val macro-F1, 3 seeds {0,1,2}; test chạy 1 lần duy nhất sau khi `final_plan.json` khóa.
 **Nguồn:** `outputs/resisc45-final-baselines-b0-b4-3-seeds/`, `outputs/resisc45-final-proposed-asf-cmp-3-seeds/`, `outputs/resisc45-final-evaluation-v2-offline/`
