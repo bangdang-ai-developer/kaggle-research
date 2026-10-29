@@ -1,0 +1,20 @@
+{
+  "id": "dangbang1/resisc45-eval-kd-3seed",
+  "title": "RESISC45 Eval KD 3 Seeds Offline",
+  "code_file": "notebook.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "false",
+  "dataset_sources": ["punfake/resisc45"],
+  "competition_sources": [],
+  "kernel_sources": [
+    "dangbang1/resisc45-data-audit-split-manifest",
+    "dangbang1/resisc45-final-baselines-b0-b4-3-seeds",
+    "dangbang1/resisc45-final-proposed-asf-cmp-3-seeds",
+    "dangbang1/resisc45-expanded-eval-3-seeds-v2-fixed",
+    "dangbang1/resisc45-kd-final-seeds-1-2"
+  ]
+}

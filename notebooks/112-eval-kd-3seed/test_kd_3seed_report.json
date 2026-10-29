@@ -1,0 +1,76 @@
+{
+ "run_id": "112-eval-kd-3seed-v1",
+ "smoke": true,
+ "device": "cpu",
+ "manifest_sha256": "78088435fabff1d9ebe15fb85bf9116e7b0014537202ae83202fb306da1cf64b",
+ "seeds": [
+  0
+ ],
+ "plan": "notes/final_plan_v3.json",
+ "caveat": "test đã quan sát v1/v2 — v3 là nghiên cứu mở rộng",
+ "results": [
+  {
+   "student": "resnet18_kd",
+   "seed": 0,
+   "test_acc": 1.0,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1111,
+   "test_macro_f1": 0.1111,
+   "n": 45,
+   "latency": {
+    "median_ms": 9.460500000386673,
+    "p95_ms": 29.777531249965225,
+    "n_iter": 10,
+    "batch": 1
+   }
+  },
+  {
+   "student": "asf_kd",
+   "seed": 0,
+   "test_acc": 1.0,
+   "test_macro_precision": 0.1111,
+   "test_macro_recall": 0.1111,
+   "test_macro_f1": 0.1111,
+   "n": 45,
+   "latency": {
+    "median_ms": 9.489103999840154,
+    "p95_ms": 9.906160050923063,
+    "n_iter": 10,
+    "batch": 1
+   }
+  }
+ ],
+ "summary": {
+  "resnet18_kd": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 1.0,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1111,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 9.4605,
+    "std": 0.0
+   }
+  },
+  "asf_kd": {
+   "n_seeds": 1,
+   "test_acc": {
+    "mean": 1.0,
+    "std": 0.0
+   },
+   "test_macro_f1": {
+    "mean": 0.1111,
+    "std": 0.0
+   },
+   "latency_median_ms": {
+    "mean": 9.4891,
+    "std": 0.0
+   }
+  }
+ },
+ "paired_vs_CE": {}
+}
