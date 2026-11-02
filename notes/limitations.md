@@ -34,6 +34,10 @@
 5. "LL ≡ full feature map" giữ nguyên — khớp code (LL không phải DWT-average).
 6. Bỏ citation counts trong related_work.md; bổ sung Sub-center ArcFace, SoftTriple, CosFace, FcaNet.
 7. Tổng GPU hours phân biệt measured (runtime log) và estimated.
+8. (v4 audit) Cột per-seed test trong bản nghiên cứu chi tiết viết tay sai (không khớp mean±std/paired diffs từ artifacts) — đã sửa lấy trực tiếp từ `test_3seed_report.json`; mean±std và paired diffs giữ nguyên (đúng).
+9. (v4 audit) layer4 ResNet18 với input 256 là 8×8 (không phải 16×16 như chú thích cũ) — chỉ sai chú thích, logic code đúng; đã sửa docs + sơ đồ.
+10. (v4 audit) Thống kê signed-GAP đo TRƯỚC projection trên subband thô — chưa đo tín hiệu sau proj/ReLU tại head; diễn cảm đã soften thành "gợi ý khảo sát energy descriptor".
+11. (v4 audit) KD chạy đủ 15 epoch (không early-stop), train time thật ~0.39h/run vs CE early-stop ~0.20h/run — chênh lệch thời gian huấn luyện được ghi rõ trong diễn giải KD.
 
 ## 3. Về protocol và dữ liệu
 

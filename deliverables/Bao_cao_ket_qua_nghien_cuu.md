@@ -14,9 +14,9 @@ Phân loại 45 cảnh ảnh viễn thám trên bộ NWPU-RESISC45 — bài toá
 
 ### 1.2. Hai kiến trúc đề xuất (gắn trên cùng backbone ResNet18 ImageNet-pretrained)
 
-**ASF (Adaptive Scale–Frequency ResNet18):** giữ nguyên backbone; tách Haar wavelet mức 1 trên feature maps layer2 (128ch, 32×32) và layer4 (512ch, 16×16) tạo 8 thành phần (mỗi stage: LL ≡ feature map gốc + LH/HL/HH); mỗi thành phần qua 1×1 conv → BN → ReLU → GAP cho vector f_i (128-d); gate softmax theo từng ảnh (MLP 1024→8) tổng hợp Σ w_i·f_i; hợp nhất residual qua Linear khởi tạo nhỏ (std 1e-3) cộng vào đặc trưng GAP(layer4) trước head 45 lớp. Entropy regularizer λ·(log 8 − H(w))/log 8, λ = 0.05 giữ gate khỏi sụp 1-hot.
+**ASF (Adaptive Scale–Frequency ResNet18):** giữ nguyên backbone; tách Haar wavelet mức 1 trên feature maps layer2 (128ch, 32×32) và layer4 (512ch, 8×8) tạo 8 thành phần (mỗi stage: nhánh ORIG — feature map gốc không qua DWT + 3 subband LH/HL/HH); mỗi thành phần qua 1×1 conv → BN → ReLU → GAP cho vector f_i (128-d); gate softmax theo từng ảnh (MLP 1024→8) tổng hợp Σ w_i·f_i; hợp nhất residual qua Linear khởi tạo nhỏ (std 1e-3) cộng vào đặc trưng GAP(layer4) trước head 45 lớp. Entropy regularizer λ·(log 8 − H(w))/log 8, λ = 0.05 giữ gate khỏi sụp 1-hot.
 
-**CMP (Confusion-guided Multi-Prototype ResNet18):** GAP → embedding Linear 512-d → L2 normalize; K prototype/lớp (L2 normalize); v1 logits = logsumexp(κ·cos(e, p_k)) − log K; v2 logits = κ·max_k(cos) (hard-max theo Sub-center ArcFace); κ học được clamp max ln 100. Confusion graph xây chỉ từ train (probe model 90/10, 6 epoch) cho margin/pair-loss có hướng.
+**CMP (Confusion-guided Multi-Prototype ResNet18):** GAP → embedding Linear 512-d → L2 normalize; K prototype/lớp (L2 normalize); v1 logits = logsumexp(κ·cos(e, p_k)) − log K; v2 logits = κ·max_k(cos) (hard-max theo Sub-center ArcFace); κ = clamp(θ, max = ln 100) — θ học trực tiếp (không qua exp), khởi tạo θ = ln 10 ≈ 2.303. Confusion graph xây chỉ từ train (probe model 90/10, 6 epoch) cho margin/pair-loss có hướng.
 
 ### 1.3. Ba vòng nghiên cứu
 - **V1:** audit dữ liệu + protocol chống rò rỉ + final 7 mô hình (5 baseline + 2 proposed) × 3 seed + test + robustness.
@@ -74,9 +74,11 @@ Test chỉ đánh giá khi kế hoạch khóa (`final_plan*.json`); checkpoint c
 
 | Model | Acc mean ± std | F1 mean ± std | F1 per seed |
 |---|---|---|---|
-| B1 | 0.9537 ± 0.0019 | 0.9537 ± 0.0019 | 0.9530 / 0.9509 / 0.9576 |
-| ASF | 0.9520 ± 0.0026 | 0.9520 ± 0.0026 | 0.9527 / 0.9443 / 0.9587 |
-| CMP | 0.9510 ± 0.0012 | 0.9509 ± 0.0012 | 0.9508 / 0.9516 / 0.9503 |
+| B1 | 0.9537 ± 0.0019 | 0.9537 ± 0.0019 | 0.9521 / 0.9558 / 0.9531 |
+| ASF | 0.9520 ± 0.0026 | 0.9520 ± 0.0026 | 0.9509 / 0.9502 / 0.9550 |
+| CMP | 0.9510 ± 0.0012 | 0.9509 ± 0.0012 | 0.9496 / 0.9513 / 0.9519 |
+
+> **Sửa lỗi (v4):** cột per-seed trong bản trước viết tay sai (không khớp mean±std/paired diffs — mean±std và paired diffs luôn đúng vì sinh từ artifacts). Bảng trên lấy trực tiếp từ `test_3seed_report.json`.
 
 **Paired F1 theo seed (test):** ASF − B1 = [−0.12, −0.56, +0.19] điểm phần trăm → mean **−0.16** (1/3 seed dương); CMP − B1 = [−0.25, −0.45, −0.12] → mean **−0.27** (0/3).
 
@@ -134,7 +136,7 @@ Kết luận: entropy regularizer là nhân tố quyết định để nhánh ga
 | D2 | Collapse tái lập được? | Synthetic LSE/hard-max (κ=10, embedding cố định): **KHÔNG** — prototype tách nhau (−0.85…−0.92) | Cơ chế đầy đủ chưa xác định (nghi parallel-drift qua LSE murette + embedding chuyển động) — ghi minh bạch |
 | D3 | Checkpoint thật? | **CÓ**: 45/45 lớp pair-cos 1.00000000, euclid 0.00035; cross-class −0.023 (metric đúng) | Collapse là hiện tượng thật, không phải lỗi đo |
 | D4a | "Gate tắt ≡ ResNet18"? | **BÁC BỎ**: residual/backbone norm = 0.37; max\|Δlogit\| = 8.50 | Sửa nhận định v1 |
-| D4b | Signed-GAP triệt tiêu? | \|E[comp]\|: LL4 1.025 vs LH4 0.054 (19×); RMS 1.426 vs 0.328 (4.3×) | Căn cứ energy descriptor |
+| D4b | Signed-GAP triệt tiêu? | Đo TRƯỚC projection trên subband thô: \|E[comp]\| LL4 1.025 vs LH4 0.054 (19×); RMS 1.426 vs 0.328 (4.3×) | Chỉ là thống kê hệ số gợi ý khảo sát energy descriptor — chưa đo tín hiệu sau proj/ReLU tại điểm head; thử nghiệm ASF-E không cải thiện cấu hình được chọn |
 
 ### 5.2. Screening v2 kết quả
 - **CMP-P hard-max + k-means**: 0.9394; **CMP-PG + pair loss đúng chiều**: 0.9416. Hard-max phá collapse cơ học (inter-cos 1.0 → 0.73/0.74; pair loss giảm đều 0.457 → 0.048) — xác nhận chẩn đoán — nhưng F1 không tăng; minority ratio ≈ 0 (prototype yếu bị hard-max bỏ hoàn toàn). → K=2 thực chất vẫn K=1 về hiệu năng.
@@ -162,9 +164,9 @@ Teacher online: KD epoch **100–104s** (~2× CE epoch ~49–53s); KD aux loss 9
 |---|---|---|---|---|
 | ResNet18-KD | 0.9483 | **0.9550** | **+0.67** | 14.96 → 0.65 (hội tụ đẹp) |
 | ASF-KD | 0.9507 | **0.9565** | **+0.58** | 13.99 → 0.53 |
-| CMP-KD (hard-max) | 0.9503 | 0.9448 | **−0.55** | 24.03 → 18.46 (không hội tụ tốt) |
+| CMP-KD (hard-max) | 0.9503* | 0.9448 | *—* | 24.03 → 18.46 (không hội tụ tốt) |
 
-KD control có tín hiệu rõ (loại trừ nghi ngờ implementation/teacher quality). **CMP-KD negative**: KD loss không hội tụ trên hard-max head → CMP không đưa KD vào final.
+KD control có tín hiệu rõ (loại trừ nghi ngờ implementation/teacher quality). **CMP-KD negative**: KD loss không hội tụ trên hard-max head → CMP không đưa KD vào final. Lưu ý so sánh: CE 0.9503 là đầu LSE còn KD là đầu hard-max — khác cả kiến trúc head lẫn loss, nên KHÔNG kết luận "KD làm CMP giảm 0.55"; kết luận đúng: "cấu hình hard-max-KD được thử không cải thiện". Control hard-max-CE (không KD, 8 epoch) = 0.9394 — khác budget, chỉ tham chiếu.
 
 ### 6.5. KD Final 3-seed validation (111)
 
@@ -199,10 +201,10 @@ Gate ASF-KD phân hóa mạnh dưới KD (max_mean 0.46; std LL4 0.26) — khác
 | B4 ConvNeXt-T | 27.85 | 96.78 ± 0.02 | 96.77 ± 0.02 | 96.82 | 96.78 | 6.87 | 0.62 |
 | ASF-CE | 11.60 | 95.20 ± 0.26 | 95.20 ± 0.26 | 95.26 | 95.20 | 3.82 | 0.21 |
 | CMP-CE | 11.49 | 95.10 ± 0.12 | 95.09 ± 0.12 | 95.16 | 95.09 | 2.56 | 0.20 |
-| **ResNet18-KD** | 11.20 | **96.02 ± 0.20** | **96.01 ± 0.19** | 96.04 | 96.03 | 2.53 | 0.21 |
-| **ASF-KD** | 11.60 | 95.91 ± 0.14 | 95.91 ± 0.14 | — | — | 3.76 | 0.21 |
+| **ResNet18-KD** | 11.20 | **96.02 ± 0.20** | **96.01 ± 0.19** | 96.04 | 96.03 | 2.53 | 0.39 |
+| **ASF-KD** | 11.60 | 95.91 ± 0.14 | 95.91 ± 0.14 | 95.96 | 95.91 | 3.76 | 0.39 |
 
-P/R macro KD models = mean của per-checkpoint (112c); các dòng khác mean 3-seed (071b). Latency = median batch-1.
+P/R macro KD models = mean của per-checkpoint (112c); các dòng khác mean 3-seed (071b). Latency = median batch-1. Train h KD = wall time 15 epoch đầy đủ (không early-stop, đo trên T4): RN18-KD ~1.385–1.394s, ASF-KD ~1.427–1.440s; CE counterpart early-stop sớm hơn nhẹ (RN18 ~710–725s) — một phần chênh lệch KD/CE bao gồm thời gian huấn luyện lâu hơn, đã ghi rõ trong diễn giải.
 
 ---
 
@@ -210,9 +212,9 @@ P/R macro KD models = mean của per-checkpoint (112c); các dòng khác mean 3-
 
 **RQ1 (ASF có cải thiện?):** Có trên validation — paired 3/3 seed (+0.39 điểm, p≈0.05). Trên test đủ seed: ASF-CE ≈ B1 (−0.16 điểm, 1/3 seed) — lợi ích không khái quát. Với KD, ASF-KD ≈ RN18-KD trên test (−0.10 điểm). **Kết luận trung thực: cải thiện nhỏ, nhất quán trên validation; chưa khái quát sang test.**
 
-**RQ2 (CMP có cải thiện?):** Không. 7 cấu hình qua 2 vòng (C1/C2/C3/C2fix/C3fix/CMP-P/CMP-PG), tốt nhất val 0.9441 và test 3-seed 0.9509 — dưới B1. Diagnostics xác nhận 2 hiện tượng cơ học (margin sai chiều; prototype collapse) và đã sửa (pair loss đúng chiều; hard-max phá collapse) nhưng F1 không cải thiện → bottleneck không nằm ở head prototype.
+**RQ2 (CMP có cải thiện?):** Không. 7 cấu hình qua 2 vòng (C1/C2/C3/C2fix/C3fix/CMP-P/CMP-PG), tốt nhất val 0.9441 và test 3-seed 0.9509 — dưới B1. Diagnostics xác nhận 2 hiện tượng cơ học (margin sai chiều; prototype collapse) và đã sửa (pair loss đúng chiều; hard-max phá collapse) nhưng F1 không cải thiện → các cách sửa head đã thử chưa tăng F1; chưa loại trừ mọi vấn đề ở head, nhưng đủ để dừng theo trần tuning.
 
-**RQ3 (chi phí — áp cho v3):** KD mang +0.65/+0.70 điểm test với chi phí training ~2× thời gian/epoch (teacher online) và chi phí teacher training lịch sử 0.62h (ghi riêng, tái sử dụng checkpoint); inference latency không đổi, teacher không xuất hiện. ASF-KD so B1-CE: +0.54 điểm F1, +1.24 ms latency (+49%), +3.6% params.
+**RQ3 (chi phí — áp cho v3):** KD mang +0.65/+0.70 điểm test với chi phí training ~2× thời gian/epoch (teacher online; KD chạy đủ 15 epoch — 0.39h/run so CE early-stop 0.20h/run) và teacher training lịch sử 0.62h (ghi riêng, tái sử dụng checkpoint); inference latency không đổi, teacher không xuất hiện. ASF-KD so B1-CE: +0.54 điểm F1, +1.24 ms latency (+49%), +3.6% params.
 
 ---
 

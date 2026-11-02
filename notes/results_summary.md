@@ -110,8 +110,8 @@
 | B3 EffB0 | 0.9602 | 0.9458 | 0.6214 | 0.9416 | 0.9494 | 0.9494 | 0.9505 |
 | B4 ConvNeXt-T | 0.9678 | 0.9608 | 0.8732 | 0.9568 | 0.9644 | 0.9657 | 0.9628 |
 
-- ASF ≥ B1 ở 5/6 corruption (blur σ2: −17.7% vs −20.7%) — tín hiệu nhỏ cùng hướng wavelet.
-- EffB0 sụp mạnh ở blur σ2 (−34%) — stride lớn nhạy motion blur; ConvNeXt-T robust nhất mọi loại.
+- ASF ≥ B1 ở 5/6 corruption theo delta (6/6 theo accuracy tuyệt đối); blur σ2: −17.7% vs −20.7%.
+- EffB0 sụp mạnh nhất ở blur σ2 (−33.9 điểm phần trăm) — chỉ là quan sát, chưa có thí nghiệm xác định nguyên nhân; ConvNeXt-T bền nhất mọi loại corruption.
 
 ## 5. Ablation (val, 8 epoch, seed 0 — screening, không phải final)
 

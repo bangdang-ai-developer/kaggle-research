@@ -227,7 +227,7 @@ class ASFResNet18(nn.Module):
     """Adaptive Scale–Frequency ResNet18.
 
     - Giữ backbone ResNet18 pretrained NGUYÊN VẸN (không thay conv nào).
-    - Lấy feature map layer2 (128ch, 32×32) và layer4 (512ch, 16×16) → Haar DWT → 8 thành phần.
+    - Lấy feature map layer2 (128ch, 32×32) và layer4 (512ch, 8×8) → Haar DWT → 8 thành phần.
     - Mỗi thành phần: 1×1 conv → F dims → BN+ReLU → GAP → vector f_i.
     - Gate (theo ảnh): MLP(8F→8) softmax; hoặc fixed_fusion=True: softmax over learnable logits (A1).
     - Fused = Σ w_i f_i → Linear zero-init (F→512) → residual cộng vào GAP(layer4) → head.
@@ -290,11 +290,11 @@ class ASFResNet18(nn.Module):
     def _backbone_feats(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h1 = self.layer1(self.stem(x))
         f2 = self.layer2(h1)     # 128ch, 32×32
-        f4 = self.layer4(self.layer3(f2))  # 512ch, 16×16
+        f4 = self.layer4(self.layer3(f2))  # 512ch, 8×8
         return f2, f4
 
     def _component_feats(self, f2: torch.Tensor, f4: torch.Tensor) -> list[torch.Tensor]:
-        """8 vector (B, F): mỗi stage gồm LL (≡ full feature map) + 3 detail qua proj→BN→ReLU→GAP."""
+        """8 vector (B, F): mỗi stage gồm ORIG (full feature map gốc) + 3 detail qua proj→BN→ReLU→GAP."""
         feats = []
         for c in self._raw_components(f2, f4):
             feats.append(self.pool(self.proj[len(feats)](c)).flatten(1))
