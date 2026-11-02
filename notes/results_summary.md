@@ -95,6 +95,8 @@
 - Nguyên nhân có bằng chứng cơ học: prototype collapse bền vững (inter-cos = 1.0 ở MỌI seed và mọi biến thể fix); confusion margin 0.3 gây hại, 0.1 trung tính.
 - **Kết luận RQ2:** multi-prototype + confusion margin KHÔNG cải thiện trong cấu hình đã thử — negative result chính thức (5 cấu hình v1 + 2 cấu hình v2: hard-max phá collapse cơ học nhưng F1 vẫn không tăng).
 
+**Bổ sung v3 (κ cap — đo trên 3.149 ảnh validation, `notes/v3b_kappa_check.json`):** CMP-KD không hội tụ có nguyên nhân tham số hóa xác định được. Logits CMP bị chặn κ·cos ∈ [−κ, κ] với κ học được 3.823 (< cap ln 100), T=4 → **trần soft-max student = 13.32%** cho bất kỳ lớp nào. Trong khi teacher soft targets (T=4) median max-prob 0.5985 (p90 0.74): **99.43% mẫu có teacher soft target vượt trần student** → student không thể khớp teacher targets, giải thích KD loss kẹt ~18.5. Đây là hạn chế tham số hóa (cosine bounded + κ thấp), không phải của KD hay prototype nói chung — nếu cải thiện CMP sau này: ưu tiên đổi tham số hóa scale (κ = exp(θ) kiểu ArcFace, scale 30–64) trước khi thêm loss/kiến trúc mới.
+
 ### RQ3 chi phí
 - ASF: chi phí +3.6% params, +52% latency nhưng không có lợi ích test xác nhận → không tương xứng (theo 3-seed).
 - CMP: cùng chi phí B1, không có lợi ích — không tương xứng.

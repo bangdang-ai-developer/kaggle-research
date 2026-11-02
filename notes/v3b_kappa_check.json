@@ -1,0 +1,25 @@
+{
+ "kappa": {
+  "CMP-KD s0": {
+   "theta": 3.8228142261505127,
+   "kappa": 3.8228142261505127,
+   "p_max_cap": 0.1332200898600535
+  },
+  "CMP-CE C2 s1": {
+   "theta": 3.7646915912628174,
+   "kappa": 3.7646915912628174,
+   "p_max_cap": 0.12989993055781646
+  }
+ },
+ "kappa_check": {
+  "cmp_kd_theta": 3.8228142261505127,
+  "cmp_kd_kappa": 3.8228142261505127,
+  "student_p_max_cap": 0.1332200898600535,
+  "teacher_maxprob_min": 0.07529383897781372,
+  "teacher_maxprob_median": 0.5985437631607056,
+  "teacher_maxprob_mean": 0.565582275390625,
+  "teacher_maxprob_p90": 0.740206265449524,
+  "teacher_maxprob_max": 0.8552823662757874,
+  "frac_teacher_exceeds_student_cap": 0.9942838996506828
+ }
+}

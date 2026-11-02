@@ -17,7 +17,8 @@
 2. **Prototype collapse bền vững** (inter-cos = 1.0 mọi seed v1). V2 hard-max đã phá collapse cơ học (inter-cos → 0.73) **nhưng F1 không tăng** (0.9394/0.9416) — 2 prototype tách nhau mà không cùng được dùng (minority ≈ 0) → vấn đề không nằm ở head prototype.
 3. **Cơ chế collapse đầy đủ chưa được tái lập** trong synthetic (LSE/hard-max với embedding cố định đều tách nhau) — nghi parallel-drift qua LSE murette + embedding chuyển động; ghi "chưa đủ bằng chứng".
 4. **Confusion margin v1 sai chiều đã xác nhận** (diagnostics D1: giảm CE mẫu khó, giảm gradient lớp khó) — v2 pair loss sửa chiều nhưng cũng không mang lợi ích F1.
-5. Hướng tiếp (đề xuất, chưa chạy): prototype điều hòa theo cách khác (orthogonal init + hinge trực tiếp), hoặc chấp nhận cosine/FC head đơn giản cho task này.
+5. **Trần soft-max tham số hóa CMP** (v3 kappa check, `notes/v3b_kappa_check.json`): logits = κ·cos bị chặn [−κ, κ] với κ học được 3.823 → trần soft-max student 13.32%/lớp (T=4); teacher soft targets median 0.5985 → **99.43% teacher targets vượt trần student** — KD loss không thể hội tụ. Hướng tiếp ưu tiên: tham số hóa scale kiểu ArcFace (κ = exp(θ), scale 30–64) trước khi thêm loss/kiến trúc mới.
+6. Hướng tiếp khác (đề xuất, chưa chạy): prototype điều hòa (orthogonal init + hinge trực tiếp), hoặc chấp nhận cosine/FC head đơn giản cho task này.
 
 ## 2b. Về vòng v2 (diagnostics + 4 candidate)
 

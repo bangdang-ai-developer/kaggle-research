@@ -166,7 +166,7 @@ Teacher online: KD epoch **100–104s** (~2× CE epoch ~49–53s); KD aux loss 9
 | ASF-KD | 0.9507 | **0.9565** | **+0.58** | 13.99 → 0.53 |
 | CMP-KD (hard-max) | 0.9503* | 0.9448 | *—* | 24.03 → 18.46 (không hội tụ tốt) |
 
-KD control có tín hiệu rõ (loại trừ nghi ngờ implementation/teacher quality). **CMP-KD negative**: KD loss không hội tụ trên hard-max head → CMP không đưa KD vào final. Lưu ý so sánh: CE 0.9503 là đầu LSE còn KD là đầu hard-max — khác cả kiến trúc head lẫn loss, nên KHÔNG kết luận "KD làm CMP giảm 0.55"; kết luận đúng: "cấu hình hard-max-KD được thử không cải thiện". Control hard-max-CE (không KD, 8 epoch) = 0.9394 — khác budget, chỉ tham chiếu.
+KD control có tín hiệu rõ (loại trừ nghi ngờ implementation/teacher quality). **CMP-KD negative**: KD loss không hội tụ trên hard-max head → CMP không đưa KD vào final. Phân tích bổ sung (đo trên 3.149 ảnh validation): logits CMP bị chặn κ·cos với κ học được 3.823 → trần soft-max student 13.32%/lớp, trong khi teacher soft targets (T=4) median max-prob 0.5985 — **99.43% teacher targets vượt trần student**, giải thích định lượng việc KD loss kẹt ~18.5. Đây là hạn chế tham số hóa: nếu cải thiện CMP, ưu tiên tham số hóa scale kiểu ArcFace (κ = exp(θ), scale 30–64) trước khi thêm thành phần khác. Lưu ý so sánh: CE 0.9503 là đầu LSE còn KD là đầu hard-max — khác cả kiến trúc head lẫn loss, nên KHÔNG kết luận "KD làm CMP giảm 0.55"; kết luận đúng: "cấu hình hard-max-KD được thử không cải thiện". Control hard-max-CE (không KD, 8 epoch) = 0.9394 — khác budget, chỉ tham chiếu.
 
 ### 6.5. KD Final 3-seed validation (111)
 
@@ -212,7 +212,7 @@ P/R macro KD models = mean của per-checkpoint (112c); các dòng khác mean 3-
 
 **RQ1 (ASF có cải thiện?):** Có trên validation — paired 3/3 seed (+0.39 điểm, p≈0.05). Trên test đủ seed: ASF-CE ≈ B1 (−0.16 điểm, 1/3 seed) — lợi ích không khái quát. Với KD, ASF-KD ≈ RN18-KD trên test (−0.10 điểm). **Kết luận trung thực: cải thiện nhỏ, nhất quán trên validation; chưa khái quát sang test.**
 
-**RQ2 (CMP có cải thiện?):** Không. 7 cấu hình qua 2 vòng (C1/C2/C3/C2fix/C3fix/CMP-P/CMP-PG), tốt nhất val 0.9441 và test 3-seed 0.9509 — dưới B1. Diagnostics xác nhận 2 hiện tượng cơ học (margin sai chiều; prototype collapse) và đã sửa (pair loss đúng chiều; hard-max phá collapse) nhưng F1 không cải thiện → các cách sửa head đã thử chưa tăng F1; chưa loại trừ mọi vấn đề ở head, nhưng đủ để dừng theo trần tuning.
+**RQ2 (CMP có cải thiện?):** Không. 7 cấu hình qua 2 vòng (C1/C2/C3/C2fix/C3fix/CMP-P/CMP-PG), tốt nhất val 0.9441 và test 3-seed 0.9509 — dưới B1. Diagnostics xác nhận 2 hiện tượng cơ học (margin sai chiều; prototype collapse) và đã sửa (pair loss đúng chiều; hard-max phá collapse) nhưng F1 không cải thiện → các cách sửa head đã thử chưa tăng F1; chưa loại trừ mọi vấn đề ở head, nhưng đủ để dừng theo trần tuning. Bổ sung: trần soft-max 13.32% (κ cap) giải thích định lượng CMP-KD không hội tụ — hạn chế tham số hóa, không phải bằng chứng chống KD nói chung.
 
 **RQ3 (chi phí — áp cho v3):** KD mang +0.65/+0.70 điểm test với chi phí training ~2× thời gian/epoch (teacher online; KD chạy đủ 15 epoch — 0.39h/run so CE early-stop 0.20h/run) và teacher training lịch sử 0.62h (ghi riêng, tái sử dụng checkpoint); inference latency không đổi, teacher không xuất hiện. ASF-KD so B1-CE: +0.54 điểm F1, +1.24 ms latency (+49%), +3.6% params.
 
