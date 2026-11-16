@@ -15,7 +15,7 @@
      0.0
     ]
    ],
-   "latency_ms": 23.0,
+   "latency_ms": 10.9,
    "probs_sum": 1.0
   },
   "ASF-KD s1": {
@@ -33,7 +33,7 @@
      0.0
     ]
    ],
-   "latency_ms": 14.7,
+   "latency_ms": 10.5,
    "probs_sum": 1.0
   }
  },

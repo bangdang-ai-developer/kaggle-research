@@ -5,20 +5,22 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import json
 import math
 import os
 import random
 import time
-from dataclasses import dataclass, field, asdict
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
 from PIL import Image
+from torch.utils.data import DataLoader, Dataset
 
 # ---------------------------------------------------------------- utils
 
@@ -36,7 +38,7 @@ def set_seed(seed: int) -> None:
 def count_params(model: nn.Module) -> dict:
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    return {"total": int(total), "trainable": int(trainable)}
+    return {"total": total, "trainable": trainable}
 
 
 # ---------------------------------------------------------------- data
@@ -111,7 +113,7 @@ class ResiscDataset(Dataset):
         return img, int(self.items.iloc[i].class_index)
 
 
-def train_augment(img: Image.Image, size: int) -> Image.Image:
+def train_augment(img: Image.Image, size: int) -> torch.Tensor:
     """Augmentation chung (thuần PIL, tránh phụ thuộc torchvision.transforms)."""
     import torchvision.transforms.functional as TF
 
@@ -120,8 +122,8 @@ def train_augment(img: Image.Image, size: int) -> Image.Image:
     scale = random.uniform(0.7, 1.0)
     ratio = random.uniform(3 / 4, 4 / 3)
     area = w * h * scale
-    cw = min(w, int(round(math.sqrt(area * ratio))))
-    ch = min(h, int(round(math.sqrt(area / ratio))))
+    cw = min(w, round(math.sqrt(area * ratio)))
+    ch = min(h, round(math.sqrt(area / ratio)))
     x = random.randint(0, w - cw)
     y = random.randint(0, h - ch)
     img = img.crop((x, y, x + cw, y + ch)).resize((size, size), Image.BILINEAR)
@@ -132,7 +134,7 @@ def train_augment(img: Image.Image, size: int) -> Image.Image:
     return TF.normalize(TF.to_tensor(img), IMAGENET_MEAN, IMAGENET_STD)
 
 
-def eval_augment(img: Image.Image, size: int) -> "torch.Tensor":
+def eval_augment(img: Image.Image, size: int) -> torch.Tensor:
     import torchvision.transforms.functional as TF
 
     img = img.resize((size, size), Image.BILINEAR)
@@ -149,41 +151,101 @@ def make_loaders(manifest: pd.DataFrame, root: str, cfg: TrainConfig):
     return dl_train, dl_val
 
 
-# ---------------------------------------------------------------- baselines
+# ---------------------------------------------------------------- model registry & factory
+
+ModelBuilder = Callable[[TrainConfig, bool], nn.Module]
+MODEL_REGISTRY: dict[str, ModelBuilder] = {}
+
+
+def register_model(key: str) -> Callable[[ModelBuilder], ModelBuilder]:
+    """Decorator đăng ký model builder vào MODEL_REGISTRY theo model_key."""
+    def _decorator(fn: ModelBuilder) -> ModelBuilder:
+        MODEL_REGISTRY[key] = fn
+        return fn
+    return _decorator
+
+
+def _build_torchvision_classifier(
+    factory_name: str,
+    weights_name: str,
+    head_setter: Callable[[nn.Module, int], None],
+    num_classes: int,
+    pretrained: bool,
+) -> nn.Module:
+    """Factory dùng chung cho các torchvision backbone (tránh lặp code weights/head)."""
+    import torchvision
+
+    weights = getattr(torchvision.models, weights_name).IMAGENET1K_V1 if pretrained else None
+    model = getattr(torchvision.models, factory_name)(weights=weights)
+    head_setter(model, num_classes)
+    return model
+
+
+def _set_fc(m: nn.Module, nc: int) -> None:
+    m.fc = nn.Linear(m.fc.in_features, nc)
+
+
+def _set_classifier_idx(idx: int) -> Callable[[nn.Module, int], None]:
+    def _setter(m: nn.Module, nc: int) -> None:
+        m.classifier[idx] = nn.Linear(m.classifier[idx].in_features, nc)
+    return _setter
+
+
+_TV_BACKBONE_SPECS: dict[str, tuple[str, str, Callable[[nn.Module, int], None]]] = {
+    "resnet18": ("resnet18", "ResNet18_Weights", _set_fc),
+    "mobilenetv3s": ("mobilenet_v3_small", "MobileNet_V3_Small_Weights", _set_classifier_idx(3)),
+    "efficientnetb0": ("efficientnet_b0", "EfficientNet_B0_Weights", _set_classifier_idx(1)),
+    "convnextt": ("convnext_tiny", "ConvNeXt_Tiny_Weights", _set_classifier_idx(2)),
+}
+
+for _tv_key, (_fn, _wn, _setter) in _TV_BACKBONE_SPECS.items():
+    def _make_tv_builder(fn_name: str = _fn, w_name: str = _wn, setter: Callable = _setter) -> ModelBuilder:
+        return lambda cfg, pretrained: _build_torchvision_classifier(
+            fn_name, w_name, setter, cfg.num_classes, pretrained
+        )
+    MODEL_REGISTRY[_tv_key] = _make_tv_builder()
+
+
+@register_model("smallcnn")
+def _build_smallcnn(cfg: TrainConfig, pretrained: bool) -> nn.Module:
+    return SmallCNN(cfg.num_classes)
+
+
+@register_model("asf")
+def _build_asf(cfg: TrainConfig, pretrained: bool) -> nn.Module:
+    return ASFResNet18(
+        cfg.num_classes,
+        pretrained=pretrained,
+        fixed_fusion=cfg.asf_fixed_fusion,
+        feature_dim=cfg.asf_feature_dim,
+        detail_mode=cfg.asf_detail_mode,
+        out_init=cfg.asf_out_init,
+        gate_descriptor=cfg.asf_gate_descriptor,
+    )
+
+
+@register_model("cmp")
+def _build_cmp(cfg: TrainConfig, pretrained: bool) -> nn.Module:
+    return CMPResNet18(
+        cfg.num_classes,
+        pretrained=pretrained,
+        n_proto=cfg.cmp_n_proto,
+        embed_dim=cfg.cmp_embed_dim,
+        confusion=cfg.cmp_confusion,
+        conf_margin=cfg.cmp_conf_margin,
+        diversity=cfg.cmp_diversity,
+        agg=cfg.cmp_agg,
+        pair=cfg.cmp_pair_loss,
+        pair_margin=cfg.cmp_pair_margin,
+    )
 
 
 def build_model(cfg: TrainConfig, pretrained: bool = True) -> nn.Module:
-    """B0–B4 và 2 proposed. pretrained=False chỉ dùng cho smoke shape-check."""
-    import torchvision
-
-    if cfg.model_key == "smallcnn":
-        return SmallCNN(cfg.num_classes)
-    if cfg.model_key == "resnet18":
-        m = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
-        m.fc = nn.Linear(m.fc.in_features, cfg.num_classes)
-        return m
-    if cfg.model_key == "mobilenetv3s":
-        m = torchvision.models.mobilenet_v3_small(weights=torchvision.models.MobileNet_V3_Small_Weights.IMAGENET1K_V1 if pretrained else None)
-        m.classifier[3] = nn.Linear(m.classifier[3].in_features, cfg.num_classes)
-        return m
-    if cfg.model_key == "efficientnetb0":
-        m = torchvision.models.efficientnet_b0(weights=torchvision.models.EfficientNet_B0_Weights.IMAGENET1K_V1 if pretrained else None)
-        m.classifier[1] = nn.Linear(m.classifier[1].in_features, cfg.num_classes)
-        return m
-    if cfg.model_key == "convnextt":
-        m = torchvision.models.convnext_tiny(weights=torchvision.models.ConvNeXt_Tiny_Weights.IMAGENET1K_V1 if pretrained else None)
-        m.classifier[2] = nn.Linear(m.classifier[2].in_features, cfg.num_classes)
-        return m
-    if cfg.model_key == "asf":
-        return ASFResNet18(cfg.num_classes, pretrained=pretrained, fixed_fusion=cfg.asf_fixed_fusion,
-                           feature_dim=cfg.asf_feature_dim, detail_mode=cfg.asf_detail_mode,
-                           out_init=cfg.asf_out_init, gate_descriptor=cfg.asf_gate_descriptor)
-    if cfg.model_key == "cmp":
-        return CMPResNet18(cfg.num_classes, pretrained=pretrained, n_proto=cfg.cmp_n_proto,
-                           embed_dim=cfg.cmp_embed_dim, confusion=cfg.cmp_confusion,
-                           conf_margin=cfg.cmp_conf_margin, diversity=cfg.cmp_diversity,
-                           agg=cfg.cmp_agg, pair=cfg.cmp_pair_loss)
-    raise ValueError(f"unknown model_key: {cfg.model_key}")
+    """B0–B4 và 2 proposed qua MODEL_REGISTRY. pretrained=False chỉ dùng cho smoke/offline load."""
+    builder = MODEL_REGISTRY.get(cfg.model_key)
+    if builder is None:
+        raise ValueError(f"unknown model_key: {cfg.model_key} (available: {sorted(MODEL_REGISTRY)})")
+    return builder(cfg, pretrained)
 
 
 class SmallCNN(nn.Module):
@@ -193,7 +255,7 @@ class SmallCNN(nn.Module):
         super().__init__()
         ch = [3, 32, 64, 128]
         layers = []
-        for a, b in zip(ch[:-1], ch[1:]):
+        for a, b in itertools.pairwise(ch):
             layers += [nn.Conv2d(a, b, 3, padding=1, bias=False), nn.BatchNorm2d(b), nn.ReLU(inplace=True),
                        nn.Conv2d(b, b, 3, padding=1, bias=False), nn.BatchNorm2d(b), nn.ReLU(inplace=True),
                        nn.MaxPool2d(2)]
@@ -223,6 +285,15 @@ def haar_dwt2(x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor
     return ll, lh, hl, hh
 
 
+def _energy_gate_features(raw_comps: list[torch.Tensor]) -> torch.Tensor:
+    """Descriptor năng lượng thô [RMS, mean|·|] trên mỗi subband — 16-dim tổng."""
+    rms, mar = [], []
+    for c in raw_comps:
+        rms.append(c.pow(2).mean(dim=(1, 2, 3)).add(1e-6).sqrt())
+        mar.append(c.abs().mean(dim=(1, 2, 3)))
+    return torch.stack(rms + mar, dim=1)
+
+
 class ASFResNet18(nn.Module):
     """Adaptive Scale–Frequency ResNet18.
 
@@ -230,8 +301,9 @@ class ASFResNet18(nn.Module):
     - Lấy feature map layer2 (128ch, 32×32) và layer4 (512ch, 8×8) → Haar DWT → 8 thành phần.
     - Mỗi thành phần: 1×1 conv → F dims → BN+ReLU → GAP → vector f_i.
     - Gate (theo ảnh): MLP(8F→8) softmax; hoặc fixed_fusion=True: softmax over learnable logits (A1).
-    - Fused = Σ w_i f_i → Linear zero-init (F→512) → residual cộng vào GAP(layer4) → head.
-    - Zero-init residual ⇒ lúc đầu model ≡ ResNet18 (bảo toàn biểu diễn pretrained).
+    - Fused = Σ w_i f_i → Linear (F→512) → residual cộng vào GAP(layer4) → head.
+    - Giữ nguyên tên attribute (`proj`, `gate`, `gate_en`, `out_proj`, `head`, `detail_conv`, `fixed_logits`)
+      để tương thích state_dict các checkpoint đã train.
     """
 
     def __init__(self, num_classes: int = 45, pretrained: bool = True, fixed_fusion: bool = False,
@@ -240,97 +312,90 @@ class ASFResNet18(nn.Module):
         super().__init__()
         import torchvision
 
-        bb = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
+        bb = torchvision.models.resnet18(
+            weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
+        )
         self.stem = nn.Sequential(bb.conv1, bb.bn1, bb.relu, bb.maxpool)
         self.layer1, self.layer2, self.layer3, self.layer4 = bb.layer1, bb.layer2, bb.layer3, bb.layer4
         self.fixed_fusion = fixed_fusion
         self.feature_dim = feature_dim
-        self.detail_mode = detail_mode  # "haar" (A1/A2) | "conv" (đối chứng spatial cùng chi phí)
-        self.gate_descriptor = gate_descriptor  # "gap": GAP(ReLU(proj)) | "energy": [RMS, mean|·|] (ASF-E)
-        self.n_components = 8  # 2 stage × (LL + 3 detail)
+        self.detail_mode = detail_mode          # "haar" (A1/A2) | "conv" (đối chứng spatial cùng chi phí)
+        self.gate_descriptor = gate_descriptor  # "gap" | "energy" (ASF-E)
+        self.n_components = 8                   # 2 stage × (ORIG + 3 detail)
         F_ = feature_dim
-        self.proj = nn.ModuleList([nn.Sequential(nn.Conv2d(c, F_, 1, bias=False), nn.BatchNorm2d(F_),
-                                                 nn.ReLU(inplace=True)) for c in (128, 128, 128, 128, 512, 512, 512, 512)])
+        self.proj = nn.ModuleList([
+            nn.Sequential(nn.Conv2d(c, F_, 1, bias=False), nn.BatchNorm2d(F_), nn.ReLU(inplace=True))
+            for c in (128, 128, 128, 128, 512, 512, 512, 512)
+        ])
         self.pool = nn.AdaptiveAvgPool2d(1)
         if detail_mode == "conv":
-            # đối chứng spatial: 3 detail "học được" (depthwise 3×3 s2) thay 3 subband Haar (miễn phí tham số)
-            self.detail_conv = nn.ModuleList([nn.Conv2d(c, c, 3, stride=2, padding=1, groups=c, bias=False)
-                                              for c in (128, 128, 128, 512, 512, 512)])
+            self.detail_conv = nn.ModuleList([
+                nn.Conv2d(c, c, 3, stride=2, padding=1, groups=c, bias=False)
+                for c in (128, 128, 128, 512, 512, 512)
+            ])
         if fixed_fusion:
             self.fixed_logits = nn.Parameter(torch.zeros(self.n_components))
+        elif gate_descriptor == "energy":
+            self.gate_en = nn.Sequential(
+                nn.BatchNorm1d(2 * self.n_components),
+                nn.Linear(2 * self.n_components, self.n_components),
+            )
         else:
-            if gate_descriptor == "energy":
-                # ASF-E: gate từ năng lượng thô (trước proj/ReLU) — signed-GAP triệt tiêu dấu
-                # (diagnostics D4b: |signed-GAP| detail ≈ 0.05 vs LL4 1.03 — chênh 19×; RMS chỉ 4.3×)
-                self.gate_en = nn.Sequential(nn.BatchNorm1d(2 * self.n_components), nn.Linear(2 * self.n_components, self.n_components))
-            else:
-                self.gate = nn.Linear(F_ * self.n_components, self.n_components)
+            self.gate = nn.Linear(F_ * self.n_components, self.n_components)
         self.out_proj = nn.Linear(F_, 512)
         if out_init == "small":
-            # scale nhỏ thay zero: gradient của gate sống từ batch đầu (chống sụp 1-hot do zero-init)
             nn.init.normal_(self.out_proj.weight, std=1e-3)
-            nn.init.zeros_(self.out_proj.bias)
         else:
             nn.init.zeros_(self.out_proj.weight)
-            nn.init.zeros_(self.out_proj.bias)
+        nn.init.zeros_(self.out_proj.bias)
         self.head = nn.Linear(512, num_classes)
         self._last_gates: torch.Tensor | None = None
 
     def _raw_components(self, f2: torch.Tensor, f4: torch.Tensor) -> list[torch.Tensor]:
-        """8 tensor thô: LL≡full feature map + 3 detail (haar hoặc conv học được)."""
-        comps = []
+        """8 tensor thô: ORIG≡full feature map + 3 detail (haar hoặc conv học được)."""
+        detail_extractors: dict[str, Callable[[int, torch.Tensor], list[torch.Tensor]]] = {
+            "conv": lambda s_idx, fm: [self.detail_conv[s_idx * 3 + d](fm) for d in range(3)],
+            "haar": lambda _s_idx, fm: list(haar_dwt2(fm)[1:]),
+        }
+        extractor = detail_extractors.get(self.detail_mode, detail_extractors["haar"])
+        comps: list[torch.Tensor] = []
         for stage_idx, fm in enumerate((f2, f4)):
             comps.append(fm)
-            if self.detail_mode == "conv":
-                comps += [self.detail_conv[stage_idx * 3 + d](fm) for d in range(3)]
-            else:
-                comps += list(haar_dwt2(fm)[1:])
+            comps.extend(extractor(stage_idx, fm))
         return comps
 
     def _backbone_feats(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         h1 = self.layer1(self.stem(x))
-        f2 = self.layer2(h1)     # 128ch, 32×32
-        f4 = self.layer4(self.layer3(f2))  # 512ch, 8×8
+        f2 = self.layer2(h1)                # 128ch, 32×32
+        f4 = self.layer4(self.layer3(f2))   # 512ch, 8×8
         return f2, f4
 
-    def _component_feats(self, f2: torch.Tensor, f4: torch.Tensor) -> list[torch.Tensor]:
-        """8 vector (B, F): mỗi stage gồm ORIG (full feature map gốc) + 3 detail qua proj→BN→ReLU→GAP."""
-        feats = []
-        for c in self._raw_components(f2, f4):
-            feats.append(self.pool(self.proj[len(feats)](c)).flatten(1))
-        return feats
+    def _encode_components(self, raw: list[torch.Tensor]) -> torch.Tensor:
+        """Chiếu 8 thành phần qua 1×1 conv → BN → ReLU → GAP → stack (B, 8, F)."""
+        return torch.stack([self.pool(self.proj[i](c)).flatten(1) for i, c in enumerate(raw)], dim=1)
 
     def _gate_input(self, raw_comps: list[torch.Tensor], stack: torch.Tensor) -> torch.Tensor:
         if self.gate_descriptor == "energy":
-            # ASF-E: descriptor năng lượng thô — RMS và mean|·| per thành phần (scalar/ảnh, 16-dim tổng)
-            rms, mar = [], []
-            for c in raw_comps:
-                rms.append(c.pow(2).mean(dim=(1, 2, 3)).add(1e-6).sqrt())
-                mar.append(c.abs().mean(dim=(1, 2, 3)))
-            return self.gate_en(torch.stack(rms + mar, dim=1))
+            return self.gate_en(_energy_gate_features(raw_comps))
         return self.gate(stack.flatten(1))
+
+    def _gate_weights_from_feats(self, raw: list[torch.Tensor], stack: torch.Tensor) -> torch.Tensor:
+        if self.fixed_fusion:
+            return torch.softmax(self.fixed_logits, dim=0).view(1, -1).expand(stack.size(0), -1)
+        return torch.softmax(self._gate_input(raw, stack), dim=-1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         f2, f4 = self._backbone_feats(x)
         raw = self._raw_components(f2, f4)
-        feats = [self.pool(self.proj[i](c)).flatten(1) for i, c in enumerate(raw)]
-        stack = torch.stack(feats, dim=1)                          # (B, 8, F)
-        if self.fixed_fusion:
-            w = torch.softmax(self.fixed_logits, dim=0)
-            w = w.view(1, -1, 1).expand_as(stack)
-            self._last_gates = None
-        else:
-            gate_in = self._gate_input(raw, stack)
-            w = torch.softmax(gate_in, dim=-1)                                    # (B, 8)
-            self._last_gates = w   # giữ gradient — dùng cho gate entropy regularizer
-            w = w.unsqueeze(-1)                                                    # (B, 8, 1)
-        fused = (stack * w).sum(dim=1)                             # (B, F)
-        backbone_vec = self.pool(f4).flatten(1)                    # (B, 512)
+        stack = self._encode_components(raw)                        # (B, 8, F)
+        w = self._gate_weights_from_feats(raw, stack)               # (B, 8)
+        self._last_gates = None if self.fixed_fusion else w         # giữ gradient cho entropy regularizer
+        fused = (stack * w.unsqueeze(-1)).sum(dim=1)                # (B, F)
+        backbone_vec = self.pool(f4).flatten(1)                     # (B, 512)
         return self.head(backbone_vec + self.out_proj(fused))
 
     def gate_entropy_loss(self) -> torch.Tensor:
-        """Phạt gate sụp 1-hot: (log K − H(w)) / log K ∈ [0,1], 0 khi đều.
-        Dùng _last_gates của batch hiện tại (gradient chảy về gate MLP)."""
+        """Phạt gate sụp 1-hot: (log K − H(w)) / log K ∈ [0,1], 0 khi đều."""
         if self.fixed_fusion or self._last_gates is None:
             return torch.zeros((), device=next(self.parameters()).device)
         p = self._last_gates.clamp_min(1e-8)
@@ -345,9 +410,8 @@ class ASFResNet18(nn.Module):
         with torch.no_grad():
             f2, f4 = self._backbone_feats(x)
             raw = self._raw_components(f2, f4)
-            feats = [self.pool(self.proj[i](c)).flatten(1) for i, c in enumerate(raw)]
-            stack = torch.stack(feats, 1)
-            w = torch.softmax(self._gate_input(raw, stack), -1)
+            stack = self._encode_components(raw)
+            w = self._gate_weights_from_feats(raw, stack)
         if was_training:
             self.train()
         return w
@@ -355,25 +419,31 @@ class ASFResNet18(nn.Module):
 
 # ---------------------------------------------------------------- CMP-ResNet18
 
+_CMP_AGGREGATORS: dict[str, Callable[[torch.Tensor, torch.Tensor, int], torch.Tensor]] = {
+    "hardmax": lambda sim, kappa, _k: sim.max(dim=2).values * kappa,
+    "lse": lambda sim, kappa, k: torch.logsumexp(sim * kappa, dim=2) - math.log(k),
+}
+
 
 class CMPResNet18(nn.Module):
     """Confusion-guided Multi-Prototype ResNet18.
 
     - Backbone ResNet18 pretrained → GAP → embed Linear → L2 normalize.
-    - K prototype/lớp (L2 normalize) → sim (B, C, K) → logits = logsumexp(κ·sim, K) − log K
-      (chuẩn hóa theo K, κ = logit_scale học được, init ln(10)).
-    - Confusion margin (có hướng, chỉ trong loss): target=a → logit_b −= m·w[a,b] với (a,b)
-      lấy từ confusion graph train-only; w ∈ [0,1].
-    - Diversity reg (tùy chọn): mean max-cos giữa prototype cùng lớp.
+    - K prototype/lớp (L2 normalize) → sim (B, C, K) → aggregation strategy (`lse` | `hardmax`).
+    - Confusion margin (có hướng, chỉ trong loss): target=a → logit_b −= m·w[a,b].
+    - Diversity reg (tùy chọn): mean abs-cos giữa prototype cùng lớp.
     """
 
     def __init__(self, num_classes: int = 45, pretrained: bool = True, n_proto: int = 1,
                  embed_dim: int = 512, confusion: bool = False, conf_margin: float = 0.3,
-                 diversity: bool = False, agg: str = "lse", pair: bool = False):
+                 diversity: bool = False, agg: str = "lse", pair: bool = False,
+                 pair_margin: float = 0.1):
         super().__init__()
         import torchvision
 
-        bb = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None)
+        bb = torchvision.models.resnet18(
+            weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
+        )
         self.backbone = nn.Sequential(*list(bb.children())[:-2])
         self.pool = nn.AdaptiveAvgPool2d(1)
         self.embed = nn.Linear(512, embed_dim)
@@ -385,7 +455,8 @@ class CMPResNet18(nn.Module):
         self.diversity = diversity
         self.cmp_agg = agg
         self.cmp_pair = pair
-        self.register_buffer("conf_w", torch.zeros(num_classes, num_classes))  # set_confusion() ghi vào đây
+        self.pair_margin = pair_margin
+        self.register_buffer("conf_w", torch.zeros(num_classes, num_classes))
 
     def set_confusion(self, w: np.ndarray) -> None:
         assert w.shape == (self.C, self.C) and float(w.min()) >= 0.0 and float(w.max()) <= 1.0
@@ -395,47 +466,45 @@ class CMPResNet18(nn.Module):
         z = self.pool(self.backbone(x)).flatten(1)
         return F.normalize(self.embed(z), dim=-1)
 
-    def logits_from_emb(self, e: torch.Tensor, apply_margin: bool = False, labels: torch.Tensor | None = None) -> torch.Tensor:
+    def _cosine_sim(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         p = F.normalize(self.prototypes, dim=-1)
         sim = (e @ p.T).view(-1, self.C, self.K)
         kappa = self.logit_scale.clamp(max=math.log(100.0))
-        if self.cmp_agg == "hardmax":
-            # CMP-P: chỉ prototype winner nhận gradient — không parallel-drift (v2 diagnostics D2/D2b)
-            logits = sim.max(dim=2).values * kappa
-        else:
-            logits = torch.logsumexp(sim * kappa, dim=2) - math.log(self.K)
+        return sim, kappa
+
+    def _off_diag_conf_weights(self, labels: torch.Tensor) -> torch.Tensor:
+        labels = labels.to(self.conf_w.device)
+        return self.conf_w[labels] * (1.0 - F.one_hot(labels, self.C).float())
+
+    def logits_from_emb(self, e: torch.Tensor, apply_margin: bool = False,
+                        labels: torch.Tensor | None = None) -> torch.Tensor:
+        sim, kappa = self._cosine_sim(e)
+        agg_fn = _CMP_AGGREGATORS.get(self.cmp_agg, _CMP_AGGREGATORS["lse"])
+        logits = agg_fn(sim, kappa, self.K)
         if apply_margin and self.confusion and labels is not None:
-            labels = labels.to(self.conf_w.device)      # chống lệch device giữa labels và buffer
-            w = self.conf_w[labels]                     # (B, C): w[a, b] trên hàng a
-            w = w * (1.0 - F.one_hot(labels, self.C).float())
-            logits = logits - self.conf_margin * w
+            logits = logits - self.conf_margin * self._off_diag_conf_weights(labels)
         return logits
 
     def forward(self, x: torch.Tensor, labels: torch.Tensor | None = None) -> torch.Tensor:
         return self.logits_from_emb(self.embeddings(x), apply_margin=True, labels=labels)
 
     def pair_loss(self, e: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        """CMP-PG: pair loss có hướng rõ ràng trên confusion graph train-only.
-        L = Σ_{c≠y} w[y,c] · softplus(m + s_c − s_y) / Z, s = κ · max_k cos(e, p_{c,k}).
-        Gradient ĐẨY s_y lên và ĐẦY s_c xuống (ngược chiều v1-margin vốn là suppress negative → CE dễ hơn).
-        Z = Σ w trên batch (bằng 0 nếu graph rỗng → trả 0 tensor). Không có self-edge."""
-        p = F.normalize(self.prototypes, dim=-1)
-        sim = (e @ p.T).view(-1, self.C, self.K)
-        kappa = self.logit_scale.clamp(max=math.log(100.0))
-        s = sim.max(dim=2).values * kappa                      # (B, C)
-        w = self.conf_w[labels.to(self.conf_w.device)] * (1.0 - F.one_hot(labels, self.C).float())
-        Z = w.sum()
-        if Z <= 0:
+        """CMP-PG: pair loss có hướng rõ ràng trên confusion graph train-only."""
+        sim, kappa = self._cosine_sim(e)
+        s = sim.max(dim=2).values * kappa
+        w = self._off_diag_conf_weights(labels)
+        z = w.sum()
+        if z <= 0:
             return e.new_zeros(())
-        m = 0.1
-        pair_terms = F.softplus(m + s - s.gather(1, labels.unsqueeze(1)))  # (B, C)
-        return (w * pair_terms).sum() / Z
+        labels_dev = labels.to(s.device)
+        pair_terms = F.softplus(self.pair_margin + s - s.gather(1, labels_dev.unsqueeze(1)))
+        return (w * pair_terms).sum() / z
 
     def diversity_loss(self) -> torch.Tensor:
         p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1)
         if self.K < 2:
             return torch.zeros((), device=p.device)
-        cos = torch.bmm(p, p.transpose(1, 2))       # (C, K, K)
+        cos = torch.bmm(p, p.transpose(1, 2))
         eye = torch.eye(self.K, device=p.device).unsqueeze(0)
         return ((cos - eye).abs().sum(dim=(1, 2)) / (self.K * (self.K - 1))).mean()
 
@@ -450,14 +519,14 @@ class CMPResNet18(nn.Module):
                     break
                 e = self.embeddings(x.to(device))
                 p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1)
-                pc = p[y.to(p.device)]               # (B, K, D) prototype của lớp đúng — index cùng device
+                pc = p[y.to(p.device)]
                 sim = torch.einsum("bd,bkd->bk", e, pc)
-                for cls, proto in zip(y.tolist(), sim.argmax(1).cpu().tolist()):
+                for cls, proto in zip(y.tolist(), sim.argmax(1).cpu().tolist(), strict=True):
                     assign[cls, proto] += 1
                 n_seen += len(y)
         inter = []
         with torch.no_grad():
-            p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1).cpu()  # phân tích nhỏ → CPU
+            p = F.normalize(self.prototypes, dim=-1).view(self.C, self.K, -1).cpu()
             if self.K > 1:
                 cos = torch.bmm(p, p.transpose(1, 2))
                 eye = torch.eye(self.K).bool().unsqueeze(0)
@@ -473,8 +542,7 @@ class CMPResNet18(nn.Module):
 def init_prototypes_kmeans(model: CMPResNet18, manifest: pd.DataFrame, root: str, device: str,
                            batch_size: int = 256, num_workers: int = 4, seed: int = 0,
                            log_every: int = 20) -> dict:
-    """Khởi tạo prototype bằng k-means trên embedding ImageNet của ảnh TRAIN (eval transform).
-    Chống prototype collapse (inter-cos=1.0 khi random init). Chạy 1 lần trước training."""
+    """Khởi tạo prototype bằng k-means trên embedding ImageNet của ảnh TRAIN (eval transform)."""
     from sklearn.cluster import KMeans
 
     model.to(device).eval()
@@ -487,7 +555,7 @@ def init_prototypes_kmeans(model: CMPResNet18, manifest: pd.DataFrame, root: str
             embs.append(model.embeddings(x.to(device)).cpu())
             ys.append(y)
             if (bi + 1) % log_every == 0:
-                print(f"[kmeans-init] batch {bi+1}/{len(dl)} | {time.time()-t0:.0f}s", flush=True)
+                print(f"[kmeans-init] batch {bi + 1}/{len(dl)} | {time.time() - t0:.0f}s", flush=True)
     E = torch.cat(embs).numpy()
     Y = torch.cat(ys).numpy()
     C, K = model.C, model.K
@@ -499,11 +567,10 @@ def init_prototypes_kmeans(model: CMPResNet18, manifest: pd.DataFrame, root: str
             km = KMeans(n_clusters=K, n_init=4, random_state=seed).fit(Ec)
             protos[c * K:(c + 1) * K] = km.cluster_centers_
             inertias.append(float(km.inertia_))
-        else:  # lớp quá ít mẫu — giữ random init hàng tương ứng
+        else:
             protos[c * K:(c + 1) * K] = model.prototypes.data[c * K:(c + 1) * K].cpu().numpy()
     model.prototypes.data = torch.from_numpy(protos).to(model.prototypes.device)
-    # chuẩn hóa lại (logits_from_emb tự normalize, nhưng giữ state sạch)
-    info = {"n_embed": int(len(E)), "mean_inertia": float(np.mean(inertias)) if inertias else None,
+    info = {"n_embed": len(E), "mean_inertia": float(np.mean(inertias)) if inertias else None,
             "elapsed_sec": round(time.time() - t0, 1)}
     print(f"[kmeans-init] DONE {info}", flush=True)
     return info
@@ -514,9 +581,7 @@ def init_prototypes_kmeans(model: CMPResNet18, manifest: pd.DataFrame, root: str
 
 def stage_dataset(manifest: pd.DataFrame, src_root: str, dst_root: str, num_threads: int = 16,
                   log_every: int = 2000) -> str:
-    """Copy ảnh từ mount FUSE (/kaggle/input — ~17-35 ảnh/s đọc lẻ) sang disk local MỘT lần,
-    song song theo thread (I/O-bound). Trả về dst_root. Verify: đếm + sample MD5 khớp nguồn.
-    Kernel huấn luyện đọc từ dst_root sau đó — epoch không còn chờ mạng."""
+    """Copy ảnh từ mount FUSE (/kaggle/input) sang disk local MỘT lần song song theo thread."""
     import hashlib
     import shutil
     from concurrent.futures import ThreadPoolExecutor
@@ -541,9 +606,8 @@ def stage_dataset(manifest: pd.DataFrame, src_root: str, dst_root: str, num_thre
             hashes[rel] = h
             if k % log_every == 0 or k == len(ids):
                 el = time.time() - t0
-                print(f"[stage] {k}/{len(ids)} ({100*k/len(ids):.0f}%) | {el:.0f}s | "
-                      f"{k/el:.0f}/s | ETA {el/k*(len(ids)-k):.0f}s", flush=True)
-    # verify: đếm + sample 100 MD5 đối chiếu nguồn
+                print(f"[stage] {k}/{len(ids)} ({100 * k / len(ids):.0f}%) | {el:.0f}s | "
+                      f"{k / el:.0f}/s | ETA {el / k * (len(ids) - k):.0f}s", flush=True)
     staged = sum(len(files) for _, _, files in os.walk(dst_root))
     assert staged == len(ids), f"staged {staged} != {len(ids)}"
     sample = ids[:: max(len(ids) // 100, 1)][:100]
@@ -552,7 +616,7 @@ def stage_dataset(manifest: pd.DataFrame, src_root: str, dst_root: str, num_thre
             src_h = hashlib.md5(f.read()).hexdigest()
         assert hashes[rel] == src_h, f"MD5 lệch sau stage: {rel}"
     print(f"[stage] VERIFY PASS: {staged} file, {len(sample)} MD5 sample khớp nguồn | "
-          f"tổng {time.time()-t0:.0f}s")
+          f"tổng {time.time() - t0:.0f}s")
     return dst_root
 
 
@@ -563,16 +627,13 @@ def build_confusion_graph(train_manifest: pd.DataFrame, root: str, graph_frac: f
                           seed: int = 0, probe_epochs: int = 6, device: str = "cuda",
                           min_count: int = 3, num_classes: int = 45,
                           num_workers: int = 4) -> tuple[np.ndarray, dict]:
-    """Probe model train trên (1−graph_frac) của TRAIN, dự đoán trên phần graph còn lại (cùng train).
-    KHÔNG dùng val/test. Trả về w (C,C) có hướng: w[a,b] = n_ab / max_row, cặp n_ab < min_count → 0.
-    """
+    """Probe model train trên (1−graph_frac) của TRAIN, dự đoán trên phần graph còn lại (cùng train)."""
     rng = np.random.default_rng(seed)
     fit_df, graph_df = [], []
-    for cls, gdf in train_manifest.groupby("class_name"):
+    for _cls, gdf in train_manifest.groupby("class_name"):
         idx = rng.permutation(len(gdf))
-        n_graph = max(1, int(round(len(gdf) * graph_frac)))
-        take = gdf.iloc[idx[:n_graph]]
-        graph_df.append(take)
+        n_graph = max(1, round(len(gdf) * graph_frac))
+        graph_df.append(gdf.iloc[idx[:n_graph]])
         fit_df.append(gdf.iloc[idx[n_graph:]])
     fit_df, graph_df = pd.concat(fit_df), pd.concat(graph_df)
 
@@ -583,64 +644,125 @@ def build_confusion_graph(train_manifest: pd.DataFrame, root: str, graph_frac: f
                         num_workers=num_workers)
     dl_graph = DataLoader(ResiscDataset(graph_df, root, False, pc.input_size), batch_size=pc.batch_size, shuffle=False,
                           num_workers=num_workers)
-    probe = train_model(probe, pc, dl_fit, None, device, verbose=False)[0]  # không early-stop (val None)
+    probe = train_model(probe, pc, dl_fit, None, device, verbose=False)[0]
 
     n = np.zeros((num_classes, num_classes), dtype=np.float64)
     probe.eval()
     with torch.no_grad():
         for x, y in dl_graph:
             pred = probe(x.to(device)).argmax(1).cpu().numpy()
-            for a, b in zip(y.numpy(), pred):
+            for a, b in zip(y.numpy(), pred, strict=True):
                 n[a, b] += 1
     off = n.copy()
     np.fill_diagonal(off, 0.0)
     row_max = off.max(axis=1, keepdims=True)
     w = np.where((off >= min_count) & (row_max > 0), off / np.maximum(row_max, 1e-9), 0.0)
-    info = {"probe_epochs": probe_epochs, "n_fit": int(len(fit_df)), "n_graph": int(len(graph_df)),
+    info = {"probe_epochs": probe_epochs, "n_fit": len(fit_df), "n_graph": len(graph_df),
             "n_pairs_active": int((w > 0).sum()), "max_n": int(off.max()),
             "confusion_rate_graph": float(off.sum() / max(len(graph_df), 1))}
     return w.astype(np.float32), info
 
 
-# ---------------------------------------------------------------- train / eval
+# ---------------------------------------------------------------- train / eval strategies
 
 
 def _param_groups(model: nn.Module, cfg: TrainConfig) -> list[dict]:
-    """Backbone lr thấp hơn head lr — pretrained conv là backbone (mọi model đều có .backbone/.stem...)."""
-    head_ids = set()
-    for name, _p in model.named_parameters():
-        if any(k in name for k in ("head", "fc", "classifier", "embed", "prototypes", "logit_scale",
-                                   "proj", "gate", "out_proj", "fixed_logits")):
-            head_ids.add(name)
+    """Backbone lr thấp hơn head lr — pretrained conv là backbone."""
+    head_keywords = ("head", "fc", "classifier", "embed", "prototypes", "logit_scale",
+                     "proj", "gate", "out_proj", "fixed_logits")
     head, backbone = [], []
     for name, p in model.named_parameters():
-        (head if name in head_ids else backbone).append(p)
+        (head if any(k in name for k in head_keywords) else backbone).append(p)
     return [{"params": backbone, "lr": cfg.lr_backbone}, {"params": head, "lr": cfg.lr_head}]
 
 
 def kd_loss(student_logits: torch.Tensor, teacher_logits: torch.Tensor, T: float) -> torch.Tensor:
-    """Knowledge distillation chuẩn (Hinton et al.):
-    L = T² · KL(softmax(teacher/T) ‖ softmax(student/T)), reduction=batchmean.
-    FP32 ổn định; teacher được xử lý no_grad bên ngoài. T² khôi phục scale gradient."""
+    """Knowledge distillation chuẩn (Hinton et al.): T² · KL(softmax(t/T) ‖ softmax(s/T))."""
     return F.kl_div(F.log_softmax(student_logits.float() / T, dim=1),
                     F.softmax(teacher_logits.float() / T, dim=1),
                     reduction="batchmean") * (T * T)
 
 
-def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val: DataLoader | None,
-                device: str, verbose: bool = True, state_out: str | None = None,
-                teacher: nn.Module | None = None) -> tuple[nn.Module, dict]:
-    """Train với AMP + cosine + warmup + early stop (val macro-F1). Trả về (best_model, history).
-    teacher (nếu có): frozen eval, no_grad, cùng batch x với student (same view) — KD."""
-    model.to(device)
-    if teacher is not None:
-        teacher.to(device).eval()
-        for p in teacher.parameters():
+class KDDistiller:
+    """Strategy bọc teacher frozen cho Knowledge Distillation cùng batch (same-view)."""
+
+    def __init__(self, teacher: nn.Module, device: str, alpha: float, temperature: float):
+        self.teacher = teacher.to(device).eval()
+        for p in self.teacher.parameters():
             p.requires_grad_(False)
-    opt = torch.optim.AdamW(_param_groups(model, cfg), weight_decay=cfg.weight_decay)
-    steps_per_epoch = max(len(dl_train), 1)
-    total_steps = cfg.epochs * steps_per_epoch
-    warmup = max(1, int(cfg.warmup_frac * total_steps))
+        self.alpha = alpha
+        self.temperature = temperature
+
+    def blend_loss(self, base_loss: torch.Tensor, student_logits: torch.Tensor,
+                   x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        with torch.no_grad():
+            t_logits = self.teacher(x)
+        kd_l = kd_loss(student_logits, t_logits, self.temperature)
+        total = (1.0 - self.alpha) * base_loss + self.alpha * kd_l
+        return total, kd_l
+
+
+class EarlyStopper:
+    """Theo dõi val macro-F1, giữ best state_dict, lưu checkpoint và dừng sớm khi hết patience."""
+
+    def __init__(self, patience: int, state_out: str | None = None):
+        self.patience = patience
+        self.state_out = state_out
+        self.best_f1 = -1.0
+        self.best_epoch = -1
+        self.best_state: dict | None = None
+        self.bad_epochs = 0
+
+    def update(self, val_f1: float, epoch: int, model: nn.Module, cfg: TrainConfig) -> bool:
+        if val_f1 > self.best_f1:
+            self.best_f1 = val_f1
+            self.best_epoch = epoch
+            self.best_state = copy.deepcopy(model.state_dict())
+            self.bad_epochs = 0
+            if self.state_out:
+                torch.save({"state_dict": self.best_state, "config": cfg.to_dict(), "epoch": epoch}, self.state_out)
+        else:
+            self.bad_epochs += 1
+        return self.bad_epochs >= self.patience
+
+
+def _compute_step_loss(
+    model: nn.Module,
+    crit: nn.Module,
+    x: torch.Tensor,
+    y: torch.Tensor,
+    cfg: TrainConfig,
+    pair_w: float,
+    ent_w: float,
+    aux: dict[str, float],
+    distiller: KDDistiller | None,
+) -> torch.Tensor:
+    """Tính loss 1 step (base CE + aux losses theo model capability + KD nếu bật)."""
+    logits = model(x, y) if isinstance(model, CMPResNet18) else model(x)
+    loss = crit(logits, y)
+    n = len(y)
+    if isinstance(model, CMPResNet18) and model.diversity:
+        div_l = model.diversity_loss()
+        loss = loss + cfg.cmp_div_weight * div_l
+        aux["div"] += float(div_l.detach()) * n
+    if isinstance(model, CMPResNet18) and model.cmp_pair and model.confusion:
+        pair_l = model.pair_loss(model.embeddings(x), y)
+        loss = loss + pair_w * pair_l
+        aux["pair"] += float(pair_l.detach()) * n
+    if ent_w > 0 and hasattr(model, "gate_entropy_loss"):
+        ent_l = model.gate_entropy_loss()
+        loss = loss + ent_w * ent_l
+        aux["gate_ent"] += float(ent_l.detach()) * n
+    if distiller is not None:
+        loss, kd_l = distiller.blend_loss(loss, logits, x)
+        aux["kd"] += float(kd_l.detach()) * n
+    return loss
+
+
+def _make_cosine_warmup_scheduler(opt: torch.optim.Optimizer, epochs: int, steps_per_epoch: int,
+                                  warmup_frac: float) -> torch.optim.lr_scheduler.LambdaLR:
+    total_steps = epochs * max(steps_per_epoch, 1)
+    warmup = max(1, int(warmup_frac * total_steps))
 
     def lr_lambda(step: int) -> float:
         if step < warmup:
@@ -648,83 +770,73 @@ def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val
         p = (step - warmup) / max(total_steps - warmup, 1)
         return 0.5 * (1 + math.cos(math.pi * p))
 
-    sched = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda)
-    scaler = torch.amp.GradScaler("cuda", enabled=cfg.amp and device.startswith("cuda"))
+    return torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda)
+
+
+def train_model(model: nn.Module, cfg: TrainConfig, dl_train: DataLoader, dl_val: DataLoader | None,
+                device: str, verbose: bool = True, state_out: str | None = None,
+                teacher: nn.Module | None = None) -> tuple[nn.Module, dict]:
+    """Train với AMP + cosine + warmup + early stop (val macro-F1). Trả về (best_model, history)."""
+    model.to(device)
+    distiller = KDDistiller(teacher, device, cfg.kd_alpha, cfg.kd_T) if teacher is not None else None
+    opt = torch.optim.AdamW(_param_groups(model, cfg), weight_decay=cfg.weight_decay)
+    sched = _make_cosine_warmup_scheduler(opt, cfg.epochs, len(dl_train), cfg.warmup_frac)
+    use_cuda_amp = cfg.amp and device.startswith("cuda")
+    scaler = torch.amp.GradScaler("cuda", enabled=use_cuda_amp)
     crit = nn.CrossEntropyLoss(label_smoothing=cfg.label_smoothing)
-    history, best = [], {"f1": -1.0, "state": None, "epoch": -1}
+    stopper = EarlyStopper(cfg.early_stop_patience, state_out=state_out)
+    history: list[dict] = []
     t_train0 = time.time()
-    bad_epochs = 0
+
     for ep in range(cfg.epochs):
         model.train()
         ep_loss, ep_n, t0 = 0.0, 0, time.time()
         aux = {"gate_ent": 0.0, "div": 0.0, "pair": 0.0, "kd": 0.0}
         n_batches = len(dl_train)
-        # ASF-EA: entropy anneal — λ giảm tuyến tính về 0 sau cfg.asf_gate_ent_anneal epoch
         ent_w = cfg.asf_gate_ent
         if cfg.asf_gate_ent_anneal > 0:
             ent_w = cfg.asf_gate_ent * max(0.0, 1.0 - ep / cfg.asf_gate_ent_anneal)
         pair_w = cfg.cmp_pair_weight * min(1.0, (ep + 1) / max(cfg.cmp_pair_warmup, 1))
+
         for bi, (x, y) in enumerate(dl_train, start=1):
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             opt.zero_grad(set_to_none=True)
-            with torch.amp.autocast("cuda", enabled=cfg.amp and device.startswith("cuda")):
-                logits = model(x, y) if isinstance(model, CMPResNet18) else model(x)
-                loss = crit(logits, y)
-                if isinstance(model, CMPResNet18) and model.diversity:
-                    div_l = model.diversity_loss()
-                    loss = loss + cfg.cmp_div_weight * div_l
-                    aux["div"] += float(div_l) * len(y)
-                if isinstance(model, CMPResNet18) and model.cmp_pair and model.confusion:
-                    pair_l = model.pair_loss(model.embeddings(x), y)
-                    loss = loss + pair_w * pair_l
-                    aux["pair"] += float(pair_l) * len(y)
-                if ent_w > 0 and hasattr(model, "gate_entropy_loss"):
-                    ent_l = model.gate_entropy_loss()
-                    loss = loss + ent_w * ent_l
-                    aux["gate_ent"] += float(ent_l) * len(y)
-                if teacher is not None:
-                    with torch.no_grad():
-                        t_logits = teacher(x)          # same view, frozen eval
-                    kd_l = kd_loss(logits, t_logits, cfg.kd_T)
-                    loss = (1.0 - cfg.kd_alpha) * loss + cfg.kd_alpha * kd_l
-                    aux["kd"] += float(kd_l) * len(y)
+            with torch.amp.autocast("cuda", enabled=use_cuda_amp):
+                loss = _compute_step_loss(model, crit, x, y, cfg, pair_w, ent_w, aux, distiller)
             scaler.scale(loss).backward()
             scaler.step(opt)
             scaler.update()
             sched.step()
             ep_loss += loss.item() * len(y)
             ep_n += len(y)
-            if bi % 50 == 0 or bi == n_batches:  # progress mỗi 50 batch — xem live trên Kaggle
+            if bi % 50 == 0 or bi == n_batches:
                 el = time.time() - t0
                 print(f"[train] ep {ep} batch {bi}/{n_batches} | {el:.0f}s | "
                       f"loss={(ep_loss / max(ep_n, 1)):.3f} | ETA {el / bi * (n_batches - bi):.0f}s", flush=True)
+
         entry = {"epoch": ep, "train_loss": ep_loss / max(ep_n, 1), "epoch_sec": round(time.time() - t0, 2),
                  "lr": sched.get_last_lr()[0],
                  "aux": {k: round(v / max(ep_n, 1), 6) for k, v in aux.items()},
                  "ent_weight": round(ent_w, 4), "pair_weight": round(pair_w, 4)}
+        should_stop = False
         if dl_val is not None:
             m = evaluate(model, dl_val, device)
             entry.update({"val_acc": m["acc"], "val_macro_f1": m["macro_f1"]})
-            if m["macro_f1"] > best["f1"]:
-                best.update({"f1": m["macro_f1"], "epoch": ep,
-                             "state": copy.deepcopy(model.state_dict())})
-                bad_epochs = 0
-                if state_out:
-                    torch.save({"state_dict": best["state"], "config": cfg.to_dict(), "epoch": ep}, state_out)
-            else:
-                bad_epochs += 1
+            should_stop = stopper.update(m["macro_f1"], ep, model, cfg)
         history.append(entry)
         if verbose:
             print(json.dumps(entry))
-        if dl_val is not None and bad_epochs >= cfg.early_stop_patience:
+        if should_stop:
             if verbose:
-                print(f"early stop @ epoch {ep} (best {best['epoch']})")
+                print(f"early stop @ epoch {ep} (best {stopper.best_epoch})")
             break
+
     train_time = time.time() - t_train0
-    if best["state"] is not None:
-        model.load_state_dict(best["state"])
+    if stopper.best_state is not None:
+        model.load_state_dict(stopper.best_state)
     hist_summary = {"train_time_sec": round(train_time, 1), "executed_epochs": len(history),
-                    "best_epoch": best["epoch"], "best_val_macro_f1": None if best["f1"] < 0 else best["f1"],
+                    "best_epoch": stopper.best_epoch,
+                    "best_val_macro_f1": None if stopper.best_f1 < 0 else stopper.best_f1,
                     "history": history}
     return model, hist_summary
 
@@ -747,7 +859,7 @@ def evaluate(model: nn.Module, loader: DataLoader, device: str) -> dict:
     return {"acc": float((y_true == y_pred).mean()), "macro_precision": float(p), "macro_recall": float(r),
             "macro_f1": float(f1),
             "per_class": {"precision": pp.tolist(), "recall": rr.tolist(), "f1": ff.tolist(), "support": sup.tolist()},
-            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(), "n": int(len(y_true))}
+            "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(), "n": len(y_true)}
 
 
 @torch.inference_mode()

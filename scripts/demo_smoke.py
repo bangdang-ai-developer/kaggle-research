@@ -11,23 +11,23 @@ import time
 from pathlib import Path
 
 import torch
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from models import TrainConfig, build_model, eval_augment  # noqa: E402
+from models import TrainConfig, build_model, eval_augment
 
 DEVICE = "cpu"  # smoke CPU
 CHECKS: dict = {}
 DATA = ROOT / "data" / "raw" / "punfake---resisc45" / "NWPU-RESISC45"
 
-CO = json.load(open(ROOT / "outputs" / "resisc45-data-audit-split-manifest" / "class_order.json"))
-CLASSES = [c for c, i in sorted(CO.items(), key=lambda kv: kv[1])]
+CO = json.loads((ROOT / "outputs" / "resisc45-data-audit-split-manifest" / "class_order.json").read_text())
+CLASSES = [c for c, _i in sorted(CO.items(), key=lambda kv: kv[1])]
 print(f"class_order: {len(CLASSES)} lớp")
 
 MODELS = {
     "B1-CE s2": ("resnet18", {}, ROOT / "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_resnet18_s2.pt"),
-    "ASF-KD s1": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
+    "ASF-KD s1": ("asf", {"asf_out_init": "small", "asf_gate_ent": 0.05},
                   ROOT / "outputs/resisc45-kd-final-seeds-1-2/ckpt_asf_kd_s1.pt"),
 }
 
@@ -48,13 +48,13 @@ for name, (mk, ov, ck_path) in MODELS.items():
         probs = torch.softmax(logits.float(), 1)[0]
     lat_ms = (time.perf_counter() - t0) * 1000
     top3 = torch.topk(probs, 3)
-    top3_out = [(CLASSES[int(i)], round(float(p), 4)) for p, i in zip(top3.values, top3.indices)]
+    top3_out = [(CLASSES[int(i)], round(float(p), 4)) for p, i in zip(top3.values, top3.indices, strict=True)]
     CHECKS[name] = {"top3": top3_out, "latency_ms": round(lat_ms, 1),
                     "probs_sum": round(float(probs.sum()), 4)}
     print(f"{name}: top-3 {top3_out} | {lat_ms:.1f}ms | probs sum = {CHECKS[name]['probs_sum']}")
 
 # corruption path (như demo)
-img_c = img.filter(Image.DEFAULT_STRATEGY if False else __import__("PIL.ImageFilter", fromlist=["ImageFilter"]).GaussianBlur(1.0))
+img_c = img.filter(ImageFilter.GaussianBlur(1.0))
 x2 = eval_augment(img_c, 256).unsqueeze(0)
 print("corruption path OK:", tuple(x2.shape))
 
@@ -62,5 +62,7 @@ all_ok = (all(v["probs_sum"] > 0.99 for v in CHECKS.values())
           and all(len(v["top3"]) == 3 for v in CHECKS.values()))
 print("DEMO SMOKE", "PASS" if all_ok else "FAIL")
 Path(ROOT / "deliverables").mkdir(exist_ok=True)
-json.dump({"checks": CHECKS, "pass": all_ok, "sample": str(sample_img)},
-          open(ROOT / "deliverables" / "demo_smoke.json", "w"), indent=1, ensure_ascii=False)
+(ROOT / "deliverables" / "demo_smoke.json").write_text(
+    json.dumps({"checks": CHECKS, "pass": all_ok, "sample": str(sample_img)}, indent=1, ensure_ascii=False),
+    encoding="utf-8",
+)

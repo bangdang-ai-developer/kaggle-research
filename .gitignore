@@ -3,6 +3,8 @@
 __pycache__/
 *.py[cod]
 .ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
 
 # Data & outputs - khong commit (tai lai bang scripts/fetch_data.sh, output pull tu Kaggle)
 data/
@@ -10,3 +12,8 @@ outputs/
 
 # macOS
 .DS_Store
+
+# Environment & secrets
+.env
+.env.*
+!.env.example

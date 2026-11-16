@@ -6,34 +6,29 @@ Exit 0 nếu mọi check PASS; exit 1 nếu có FAIL.
 """
 from __future__ import annotations
 
-import json
 import sys
-from pathlib import Path
+import zipfile
 
 import numpy as np
+from common import ROOT, load_json, load_output_json, mean_std
 
-ROOT = Path(__file__).resolve().parent.parent
 issues: list[str] = []
 passes: list[str] = []
 
 
 def check(name: str, cond: bool, detail: str = "") -> None:
-    (passes if cond else issues).append(f"{'PASS' if cond else 'FAIL'}: {name}" + (f" — {detail}" if detail else ""))
-
-
-def ms(vals):
-    v = np.array(vals, dtype=float)
-    return v.mean(), (v.std(ddof=1) if len(v) > 1 else 0.0)
+    msg = f"{'PASS' if cond else 'FAIL'}: {name}" + (f" — {detail}" if detail else "")
+    (passes if cond else issues).append(msg)
 
 
 # 1) Load artifacts nguồn
-r071 = json.load(open(ROOT / "outputs/resisc45-expanded-eval-3-seeds-v2-fixed/test_3seed_report.json"))
-r112 = json.load(open(ROOT / "outputs/resisc45-eval-kd-3-seeds-v2-fixed-sources/test_kd_3seed_report.json"))
-master = json.load(open(ROOT / "deliverables/results_master.json"))
+r071 = load_output_json("resisc45-expanded-eval-3-seeds-v2-fixed/test_3seed_report.json")
+r112 = load_output_json("resisc45-eval-kd-3-seeds-v2-fixed-sources/test_kd_3seed_report.json")
+master = load_json("deliverables/results_master.json")
 
 
-def extract(report, key_field):
-    out = {}
+def extract(report: dict, key_field: str) -> dict:
+    out: dict = {}
     for e in report["results"]:
         seed = e.get("seed", e.get("config", {}).get("seed"))
         out.setdefault(e[key_field], {})[seed] = e
@@ -56,30 +51,32 @@ for src_name, src in (("071b", ce), ("112c", kd)):
 for key in ("smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt", "ASF_A2fix_ent", "CMP_C2"):
     rows = ce[key]
     seeds = sorted(rows)
-    acc_m, acc_s = ms([rows[s]["test_acc"] for s in seeds])
-    f1_m, f1_s = ms([rows[s]["test_macro_f1"] for e_rows in seeds for _ in [0]] or [rows[s]["test_macro_f1"] for s in seeds])
+    acc_m, acc_s = mean_std([rows[s]["test_acc"] for s in seeds])
     m_entry = master["models"][key]["test_3seed_acc"]
     check(f"master/{key}: acc mean khớp per-seed", abs(m_entry["mean"] - acc_m) < 5e-5,
           f"{m_entry['mean']} vs {acc_m:.6f}")
-    check(f"master/{key}: acc std khớp (ddof=1)", abs(m_entry["std"] - acc_s) < 5e-5, f"{m_entry['std']} vs {acc_s:.6f}")
+    check(f"master/{key}: acc std khớp (ddof=1)", abs(m_entry["std"] - acc_s) < 5e-5,
+          f"{m_entry['std']} vs {acc_s:.6f}")
     f1_entry = master["models"][key]["test_3seed_f1"]
-    f1_m2, f1_s2 = ms([rows[s]["test_macro_f1"] for s in seeds])
-    check(f"master/{key}: f1 mean/std khớp", abs(f1_entry["mean"] - f1_m2) < 5e-5 and abs(f1_entry["std"] - f1_s2) < 5e-5)
+    f1_m, f1_s = mean_std([rows[s]["test_macro_f1"] for s in seeds])
+    check(f"master/{key}: f1 mean/std khớp",
+          abs(f1_entry["mean"] - f1_m) < 5e-5 and abs(f1_entry["std"] - f1_s) < 5e-5)
 
 for key in ("resnet18_kd", "asf_kd"):
     rows = kd[key]
     seeds = sorted(rows)
     m_entry = master["models"][key]["test_3seed_acc"]
-    acc_m, acc_s = ms([rows[s]["test_acc"] for s in seeds])
-    check(f"master/{key}: acc mean/std khớp per-seed", abs(m_entry["mean"] - acc_m) < 5e-5 and abs(m_entry["std"] - acc_s) < 5e-5)
+    acc_m, acc_s = mean_std([rows[s]["test_acc"] for s in seeds])
+    check(f"master/{key}: acc mean/std khớp per-seed",
+          abs(m_entry["mean"] - acc_m) < 5e-5 and abs(m_entry["std"] - acc_s) < 5e-5)
 
 # 4) Paired diffs khớp per-seed (điểm phần trăm)
 paired = r112.get("paired_vs_CE", {})
 ce_f1 = {m: {s: e["test_macro_f1"] for s, e in ce[m].items()} for m in ("resnet18", "ASF_A2fix_ent")}
-for kd_key, ce_key, ce_map in (("resnet18_kd", "resnet18", "resnet18"), ("asf_kd", "ASF_A2fix_ent", "ASF_A2fix_ent")):
+for kd_key, ce_map in (("resnet18_kd", "resnet18"), ("asf_kd", "ASF_A2fix_ent")):
     diffs_ratio = [kd[kd_key][s]["test_macro_f1"] - ce_f1[ce_map][s] for s in (0, 1, 2)]
     diffs_pct = [d * 100 for d in diffs_ratio]
-    entry = paired.get(kd_key) or paired.get("asf_kd" if kd_key == "asf_kd" else kd_key)
+    entry = paired.get(kd_key)
     if entry is None:
         issues.append(f"FAIL: thiếu paired entry cho {kd_key}")
         continue
@@ -108,11 +105,10 @@ for f in ("Bao_cao_cuoi_mon_NWPU_RESISC45.docx", "Slides_cuoi_mon_NWPU_RESISC45.
     check(f"deliverables/{f} tồn tại", (ROOT / "deliverables" / f).exists())
 
 # 7) ZIP không chứa file nhạy cảm
-import zipfile
-
+bad_patterns = (".git", "venv", "__pycache__", "credential", "data/raw", "token", ".kaggle")
 with zipfile.ZipFile(ROOT / "deliverables/NWPU_RESISC45_submission.zip") as z:
     names = z.namelist()
-    bad = [n for n in names if any(s in n.lower() for s in (".git", "venv", "__pycache__", "credential", "data/raw", "token", ".kaggle"))]
+    bad = [n for n in names if any(s in n.lower() for s in bad_patterns)]
     check("ZIP không chứa file nhạy cảm", not bad, str(bad))
     check("ZIP ≥ 40 files", len(names) >= 40, f"{len(names)}")
 

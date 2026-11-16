@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # uv duoc cai tai ~/.local/bin - dam bao tim duoc tu moi shell
 PATH="$HOME/.local/bin:$PATH"
+if [ -f .env ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . ./.env
+  set +a
+  [ -z "${KAGGLE_API_TOKEN:-}" ] && unset KAGGLE_API_TOKEN
+  [ -z "${KAGGLE_USERNAME:-}" ] && unset KAGGLE_USERNAME
+  [ -z "${KAGGLE_KEY:-}" ] && unset KAGGLE_KEY
+fi
 # Download a Kaggle competition or dataset for local EDA.
 # Usage: ./fetch_data.sh competition <name>     -> data/raw/<name>/
 #        ./fetch_data.sh dataset <owner/slug>   -> data/raw/<owner>---<slug>/

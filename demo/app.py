@@ -13,34 +13,48 @@ import io
 import json
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-import numpy as np
 import streamlit as st
 import torch
-import torch.nn as nn
 from PIL import Image, ImageEnhance, ImageFilter
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from models import TrainConfig, build_model, eval_augment  # noqa: E402
+from models import TrainConfig, build_model, eval_augment
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 MODELS = {
     "B1 ResNet18 (baseline CE)": ("resnet18", {}, "resisc45-final-baselines-b0-b4-3-seeds", "ckpt_resnet18_s2.pt"),
-    "B1 ResNet18-KD (distilled v3)": ("resnet18", dict(kd_alpha=0.5, kd_T=4.0),
+    "B1 ResNet18-KD (distilled v3)": ("resnet18", {"kd_alpha": 0.5, "kd_T": 4.0},
                                       "resisc45-screen-kd-resnet18-asf-cmp-v2", "ckpt_resnet18_kd.pt"),
-    "ASF A2fix-ent (proposed v1 CE)": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
+    "ASF A2fix-ent (proposed v1 CE)": ("asf", {"asf_out_init": "small", "asf_gate_ent": 0.05},
                                        "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_ASF_A2fix_ent_s1.pt"),
-    "ASF-KD (distilled v3, best val)": ("asf", dict(asf_out_init="small", asf_gate_ent=0.05),
+    "ASF-KD (distilled v3, best val)": ("asf", {"asf_out_init": "small", "asf_gate_ent": 0.05},
                                         "resisc45-kd-final-seeds-1-2", "ckpt_asf_kd_s1.pt"),
-    "CMP C2 (proposed v1)": ("cmp", dict(cmp_n_proto=2),
+    "CMP C2 (proposed v1)": ("cmp", {"cmp_n_proto": 2},
                              "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_CMP_C2_s1.pt"),
 }
 CORRUPTIONS = {"Không": (None, None), "Blur σ1": ("blur", 1.0), "Blur σ2": ("blur", 2.0),
                "JPEG q30": ("jpeg", 30), "JPEG q60": ("jpeg", 60),
                "Sáng ×0.6": ("bright", 0.6), "Tối ×1.4": ("bright", 1.4)}
+
+
+def _jpeg_corrupt(img: Image.Image, quality: int) -> Image.Image:
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=int(quality))
+    buf.seek(0)
+    return Image.open(buf).convert("RGB")
+
+
+CORRUPTION_STRATEGIES: dict[str, Callable[[Image.Image, Any], Image.Image]] = {
+    "blur": lambda img, sigma: img.filter(ImageFilter.GaussianBlur(sigma)),
+    "jpeg": _jpeg_corrupt,
+    "bright": lambda img, factor: ImageEnhance.Brightness(img).enhance(factor),
+}
 
 
 @st.cache_resource
@@ -49,7 +63,7 @@ def load_class_order() -> dict:
     if not p.exists():
         st.error(f"Thiếu {p} — pull output kernel 010 trước.")
         st.stop()
-    return json.load(open(p))
+    return json.loads(p.read_text(encoding="utf-8"))
 
 
 @st.cache_resource
@@ -67,19 +81,9 @@ def load_model(display_key: str):
     return model
 
 
-def corrupt(img: Image.Image, kind, param) -> Image.Image:
-    if kind is None:
-        return img
-    if kind == "blur":
-        return img.filter(ImageFilter.GaussianBlur(param))
-    if kind == "jpeg":
-        buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=int(param))
-        buf.seek(0)
-        return Image.open(buf).convert("RGB")
-    if kind == "bright":
-        return ImageEnhance.Brightness(img).enhance(param)
-    return img
+def corrupt(img: Image.Image, kind: str | None, param: Any) -> Image.Image:
+    strategy = CORRUPTION_STRATEGIES.get(kind) if kind is not None else None
+    return strategy(img, param) if strategy is not None else img
 
 
 st.set_page_config(page_title="NWPU-RESISC45 Demo", layout="wide")
@@ -123,7 +127,7 @@ if uploaded is not None:
         e2e_ms = (time.perf_counter() - t0) * 1000
 
         st.subheader(f"Top-3 dự đoán — {sel_model}")
-        for prob, idx in zip(top3.values, top3.indices):
+        for prob, idx in zip(top3.values, top3.indices, strict=True):
             st.progress(float(prob), text=f"{CLASSES[int(idx)]} — {float(prob)*100:.2f}%")
         st.info(f"Model-only latency: **{model_ms:.1f} ms** | end-to-end (gồm upload/preprocess/postprocess): "
                 f"**{e2e_ms:.1f} ms** | device: {DEVICE}")
