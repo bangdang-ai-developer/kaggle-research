@@ -28,6 +28,8 @@ uv run kaggle config view                        # kiểm tra username + auth (~
 | 6 | notebooks/060a-final-baselines | resisc45-final-baselines-b0-b4-3-seeds | T4 | ~5h | final 5 baseline × 3 seed |
 | 7 | notebooks/060b-final-proposed | resisc45-final-proposed-asf-cmp-3-seeds | T4 | ~1.5h | final ASF + CMP × 3 seed |
 | 8 | notebooks/070b-final-evaluation | resisc45-final-evaluation-v2-offline | T4 | ~40' | test + latency + robustness (1 lần duy nhất) |
+| 9 | notebooks/100b→110b→111→112c | resisc45-kd-* / resisc45-eval-kd-3-seeds-v2-fixed-sources | T4 | ~4.1h | KD pilot, screening, final 3-seed + test |
+| 10 | notebooks/120-h1a-screen → 121-cmp-exp-final-eval | resisc45-h1a-screen-* / resisc45-cmp-exp-3-seeds-and-test-eval | T4 | ~2.5h | v4 Hướng A: CMP κ=exp screening + 3-seed + test |
 
 ```bash
 ./scripts/push_kernel.sh notebooks/<slug>                       # push (cần xác nhận theo permissions)

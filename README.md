@@ -4,14 +4,14 @@
 
 Bài nộp project cuối môn — nhóm 2 thành viên. Repo chứa toàn bộ source, notebook Kaggle, artifacts và tài liệu của 3 vòng nghiên cứu (v1/v2/v3).
 
-> **Mô hình nộp chính (nhóm nhỏ):** ResNet18-KD — **96.02% test accuracy**, macro-F1 **96.01%** (+0.65 điểm so cùng kiến trúc huấn luyện CE, nhất quán 3/3 seed), khả thi inference 2.53 ms.
+> **Mô hình nộp chính:** ResNet18-KD — **96.02% test accuracy**, macro-F1 **96.01%** (+0.65 điểm so cùng kiến trúc huấn luyện CE, nhất quán 3/3 seed), latency 2.53 ms. Ở vòng mở rộng Hướng A (v4), sửa lỗi thiếu `.exp()` trên `logit_scale` giúp **`CMP-exp-CE` đạt 95.49% / 95.48% F1** (vượt CMP v1 +0.39 điểm 3/3 seed và vượt backbone `B1 ResNet18-CE` 95.37% trên cả val lẫn test) và **`CMP-exp-KD` đạt 95.73% / 95.74% ± 0.05%**.
 
 ## Tóm tắt
 
 Phân loại 45 cảnh ảnh viễn thám trên **NWPU-RESISC45** (31.500 ảnh 256×256, 45 lớp × 700 ảnh). Hai kiến trúc đề xuất gắn trên cùng backbone ResNet18 ImageNet-pretrained:
 
 - **ASF** (Adaptive Scale–Frequency): tách Haar wavelet mức 1 trên feature maps layer2/layer4 thành 8 thành phần, gate softmax theo từng ảnh hợp nhất qua residual; entropy regularizer giữ gate khỏi sụp 1-hot.
-- **CMP** (Confusion-guided Multi-Prototype): embedding cosine classifier với K=2 prototype mỗi lớp (hard-max, k-means init) — vòng v2 đã chẩn đoán và sửa hiện tượng prototype collapse bằng số.
+- **CMP / CMP-exp** (Confusion-guided Multi-Prototype): embedding cosine classifier với K=2 prototype mỗi lớp (hard-max, k-means init) — vòng v2 chẩn đoán collapse, vòng v3b phát hiện lỗi thiếu `.exp()` trên `logit_scale` gây trần softmax 13.32%, vòng v4 sửa `κ = exp(θ) ∈ [10, 64]` giúp CMP-exp-CE vượt B1 và mở khóa CMP-KD hội tụ sạch.
 
 **V3 — Knowledge Distillation:** ConvNeXt-T (teacher, val F1 0.9691) huấn luyện cùng ResNet18/ASF với T=4, α=0.5. KD cải thiện nhất quán trên test 3/3 seed cho cả hai student; teacher chỉ dùng lúc training, student inference độc lập.
 
@@ -51,12 +51,15 @@ Teacher ConvNeXt-T chọn theo validation macro-F1 (0.9691, seed 2, checkpoint h
 | B4 ConvNeXt-T (teacher) | 96.78 ± 0.02 | 96.77 ± 0.02 | 27.85 | 6.87 |
 | **ASF-KD** | 95.91 ± 0.14 | 95.91 ± 0.14 | 11.60 | 3.76 |
 | **ResNet18-KD** | **96.02 ± 0.20** | **96.01 ± 0.19** | 11.20 | 2.53 |
+| **ASF-KD** | 95.91 ± 0.14 | 95.91 ± 0.14 | 11.60 | 3.76 |
+| **CMP-exp-KD** *(v4, κ=exp)* | 95.73 ± 0.05 | 95.74 ± 0.05 | 11.49 | 3.71 |
+| **CMP-exp-CE** *(v4, κ=exp)* | **95.49 ± 0.22** | **95.48 ± 0.21** | 11.49 | 3.69 |
 | ASF-CE | 95.20 ± 0.26 | 95.20 ± 0.26 | 11.60 | 3.82 |
-| CMP-CE | 95.10 ± 0.12 | 95.09 ± 0.12 | 11.49 | 2.56 |
+| CMP-CE *(v1)* | 95.10 ± 0.12 | 95.09 ± 0.12 | 11.49 | 2.56 |
 
-Nguồn: `deliverables/results_master.csv` (sinh tự động từ artifacts). Đánh giá test đã được quan sát qua các vòng — v3 công bố là nghiên cứu mở rộng.
+Nguồn: `deliverables/results_master.csv` (sinh tự động từ artifacts). Đánh giá test đã được quan sát qua các vòng — v3/v4 công bố là nghiên cứu mở rộng theo plan khóa trước.
 
-**Đọc đúng kết quả:** KD mang cải thiện lớn nhất và nhất quán (+0.65 điểm cho ResNet18, +0.70 điểm cho ASF — 3/3 seed). Dưới KD, ASF gần như ngang ResNet18 (−0.10 điểm) — lợi ích kiến trúc ASF thể hiện trên validation (+0.39 điểm, 3/3 seed) nhưng chưa khái quát sang test. CMP không vượt B1 nhưng vượt B2 (+0.40 điểm). Không mô hình nhóm nhỏ vượt B4 ConvNeXt-T.
+**Đọc đúng kết quả:** KD mang cải thiện lớn nhất và nhất quán (+0.65 điểm cho ResNet18, +0.70 điểm cho ASF — 3/3 seed). Ở vòng v4 (Hướng A), sửa `κ = exp(θ)` giúp `CMP-exp-CE` vượt `CMP-CE v1` (+0.39 điểm, 3/3 seed) và vượt `B1 ResNet18-CE` (+0.11 điểm test, 2/3 seed; +0.40 điểm val, 3/3 seed) đồng thời đưa `CMP-exp-KD` từ kẹt 94.48% lên 95.74% ± 0.05%. Dưới KD, `ResNet18-KD` (96.02%) vẫn cao nhất nhóm nhỏ. Không mô hình nhóm nhỏ vượt B4 ConvNeXt-T.
 
 ## Đối chiếu yêu cầu môn học
 
@@ -138,6 +141,7 @@ Toàn bộ chạy trên Kaggle GPU (Tesla T4), tổng ~16 giờ qua 3 vòng. Th�
 | 9 | `080-cmp-v2`, `090-asf-v2` | resisc45-screen-*-v2/v3 | T4 | screening v2 |
 | 10 | `100b-kd-pilot`, `110b-kd-screen`, `111-kd-final` | resisc45-kd-* | T4 | KD pilot/screening/final |
 | 11 | `071b-eval-3seed`, `112c-eval-kd-3seed` | resisc45-expanded-eval-* / resisc45-eval-kd-3-seeds-v2 | T4 | test eval mở rộng |
+| 12 | `120-h1a-screen`, `121-cmp-exp-final-eval` | resisc45-h1a-screen-* / resisc45-cmp-exp-3-seeds-and-test-eval | T4 | Hướng A (v4): CMP κ=exp 3-seed + test eval |
 
 ```bash
 ./scripts/push_kernel.sh notebooks/<slug>            # push (cần xác nhận)

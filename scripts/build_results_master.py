@@ -21,6 +21,9 @@ r071b = load_output_json("resisc45-expanded-eval-3-seeds-v2-fixed/test_3seed_rep
 r112c = load_output_json("resisc45-eval-kd-3-seeds-v2-fixed-sources/test_kd_3seed_report.json")
 r110b = load_output_json("resisc45-screen-kd-resnet18-asf-cmp-v2/kd_screen_report.json")
 r111 = load_output_json("resisc45-kd-final-seeds-1-2/kd_final_report.json")
+r120 = load_output_json("resisc45-h1a-screen-cmp-exp-asf-lite/h1a_screen_report.json")
+r121_val = load_output_json("resisc45-cmp-exp-3-seeds-and-test-eval/cmp_exp_final_report.json")
+r121_test = load_output_json("resisc45-cmp-exp-3-seeds-and-test-eval/cmp_exp_test_3seed_report.json")
 
 DISPLAY = {
     "smallcnn": "B0 SmallCNN (from scratch)",
@@ -28,10 +31,12 @@ DISPLAY = {
     "mobilenetv3s": "B2 MobileNetV3-S",
     "efficientnetb0": "B3 EfficientNet-B0",
     "convnextt": "B4 ConvNeXt-T (teacher)",
-    "ASF_A2fix_ent": "ASF-CE (proposed)",
-    "CMP_C2": "CMP-CE (proposed)",
+    "ASF_A2fix_ent": "ASF-CE (proposed v1)",
+    "CMP_C2": "CMP-CE (proposed v1)",
     "resnet18_kd": "ResNet18-KD",
-    "asf_kd": "ASF-KD (proposed)",
+    "asf_kd": "ASF-KD (proposed v1+KD)",
+    "cmp_exp_ce": "CMP-exp-CE (proposed v4, κ=exp)",
+    "cmp_exp_kd": "CMP-exp-KD (proposed v4, κ=exp)",
 }
 master: dict = {"models": {}}
 
@@ -69,7 +74,7 @@ for key in ("smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt
         "is_teacher": key == "convnextt",
     }
 
-# ---- KD models: val 3-seed (110b s0 + 111 s1/s2), test 3-seed (112c)
+# ---- KD models (v3): val 3-seed (110b s0 + 111 s1/s2), test 3-seed (112c)
 kd_src: dict = {"resnet18_kd": {}, "asf_kd": {}}
 for e in r110b["results"]:
     if e["student"] in kd_src:
@@ -104,6 +109,45 @@ for key in ("resnet18_kd", "asf_kd"):
         "latency_ms_bestvalseed": t3[bvs]["latency"]["median_ms"],
     }
 
+# ---- CMP-exp models (v4 Hướng A): val 3-seed (120 s0 + 121 s1/s2), test 3-seed (121)
+cmp_exp_src: dict = {"cmp_exp_ce": {}, "cmp_exp_kd": {}}
+for e in r120["results"]:
+    if e["name"] in cmp_exp_src:
+        cmp_exp_src[e["name"]][e["config"]["seed"]] = e
+for e in r121_val["results"]:
+    cmp_exp_src[e["variant"]][e["seed"]] = e
+test_cmp_exp: dict = {}
+for e in r121_test["results"]:
+    test_cmp_exp.setdefault(e["variant"], {})[e["seed"]] = e
+
+for key in ("cmp_exp_ce", "cmp_exp_kd"):
+    rows = cmp_exp_src[key]
+    seeds = sorted(rows)
+    t3 = test_cmp_exp[key]
+    t3_seeds = sorted(t3)
+    bvs = max(t3_seeds, key=lambda s: rows[s]["best_val_macro_f1"])
+    entry = {
+        "display": DISPLAY[key],
+        "params_total_m": round(rows[seeds[0]]["params"]["total"] / 1e6, 2),
+        "val_f1_3seed": mean_std_dict([rows[s]["best_val_macro_f1"] for s in seeds]),
+        "val_acc_3seed": mean_std_dict([rows[s]["best_val_acc"] for s in seeds]),
+        "train_time_h_mean": round(float(np.mean([rows[s]["train_time_sec"] for s in seeds])) / 3600, 3),
+        "executed_epochs": {s: rows[s]["executed_epochs"] for s in seeds},
+        "test_3seed_acc": mean_std_dict([t3[s]["test_acc"] for s in t3_seeds]),
+        "test_3seed_f1": mean_std_dict([t3[s]["test_macro_f1"] for s in t3_seeds]),
+        "test_3seed_precision": mean_std_dict([t3[s]["test_macro_precision"] for s in t3_seeds]),
+        "test_3seed_recall": mean_std_dict([t3[s]["test_macro_recall"] for s in t3_seeds]),
+        "latency_ms_3seed_mean": round(float(np.mean([t3[s]["latency"]["median_ms"] for s in t3_seeds])), 2),
+        "same_machine_resnet18_latency_ms": round(float(r121_test["same_machine_resnet18_latency"]["median_ms"]), 2),
+        "kappa_mean": round(float(np.mean([t3[s]["kappa"] for s in t3_seeds])), 2),
+        "test_bestvalseed": {"seed": bvs, "acc": t3[bvs]["test_acc"], "f1": t3[bvs]["test_macro_f1"],
+                             "precision": t3[bvs]["test_macro_precision"], "recall": t3[bvs]["test_macro_recall"]},
+        "latency_ms_bestvalseed": t3[bvs]["latency"]["median_ms"],
+    }
+    if key == "cmp_exp_kd":
+        entry["kd"] = {"alpha": 0.5, "T": 4.0, "teacher": "ConvNeXt-T s2 (val F1 0.9691, sha 9627ca43)"}
+    master["models"][key] = entry
+
 # ---- KD overhead + teacher history ----
 master["kd_overhead"] = {
     "teacher_inference_overhead": "KD epoch ~100-104s vs CE ~49-53s (teacher forward online)",
@@ -122,6 +166,10 @@ master["audit"] = {
         "HỢP LỆ — config s0 vs s1/s2 chỉ khác epoch_saved; teacher hash 9627ca43 xác nhận logs cả 2 kernel; "
         "code nhúng notebook 110b đúng (không nhiễm bug _gate_input)"
     ),
+    "cmp_exp_h1a": (
+        "Sửa lỗi quên .exp() trên logit_scale (κ=exp(θ)∈[10,64]); CMP-exp-CE vượt CMP-CE v1 (+0.39% 3/3) "
+        "và B1 (+0.11% test, 2/3; +0.40% val, 3/3); CMP-exp-KD hội tụ sạch (KD loss 15.21→0.51, 95.74%±0.05%)."
+    ),
 }
 master["protocol"] = {
     "split_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a",
@@ -129,7 +177,7 @@ master["protocol"] = {
     "optimizer": "AdamW lr 1e-4/1e-3 wd 1e-4 cosine warmup 5%",
     "checkpoint_rule": "val macro-F1", "seeds": [0, 1, 2], "amp": True,
     "input": "256x256 ImageNet-norm RRC+hflip+vflip",
-    "test_caveat": "test đã quan sát qua v1/v2 — v3 là nghiên cứu mở rộng, không chọn cấu hình bằng test",
+    "test_caveat": "test đã quan sát qua v1/v2/v3 — v3/v4 là nghiên cứu mở rộng theo final_plan_v3/v4 đã khóa",
 }
 
 (OUT / "results_master.json").write_text(json.dumps(master, indent=1, ensure_ascii=False), encoding="utf-8")
@@ -145,11 +193,11 @@ for key, e in master["models"].items():
         "test_precision_mean": e["test_3seed_precision"]["mean"],
         "test_recall_mean": e["test_3seed_recall"]["mean"],
         "test_f1_bestvalseed": e["test_bestvalseed"]["f1"],
-        "latency_ms": e.get("latency_ms_bestvalseed") or e.get("latency_ms_3seed_mean"),
-        "train_h": e["train_time_h_mean"], "teacher": e.get("teacher") is not None,
+        "latency_ms": e.get("latency_ms_3seed_mean") or e.get("latency_ms_bestvalseed"),
+        "train_h": e["train_time_h_mean"], "teacher": e.get("kd") is not None,
     })
 pd.DataFrame(csv_rows).to_csv(OUT / "results_master.csv", index=False)
 print(f"saved {OUT / 'results_master.json'} + results_master.csv")
 for r in csv_rows:
-    print(f"  {r['display']:<28} testF1 {r['test_f1_mean']:.4f}±{r['test_f1_std']:.4f} "
+    print(f"  {r['display']:<32} testF1 {r['test_f1_mean']:.4f}±{r['test_f1_std']:.4f} "
           f"acc {r['test_acc_mean']:.4f} lat {r['latency_ms']}ms")

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
-"""Sinh hình báo cáo từ artifacts đã pull (không số giả — đọc trực tiếp JSON/CSV).
+"""Sinh hình báo cáo từ deliverables/results_master.json & artifacts đã pull.
 
 Chạy: uv run python3 scripts/make_figures.py
 Output: notes/figures/*.png
 """
 from __future__ import annotations
-
-import json
-from pathlib import Path
 
 import matplotlib
 
@@ -15,83 +12,93 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from common import ROOT, load_json, load_output_json
+from PIL import Image
 
-ROOT = Path(__file__).resolve().parent.parent
 FIG = ROOT / "notes" / "figures"
 FIG.mkdir(parents=True, exist_ok=True)
 
-OUT_B = ROOT / "outputs" / "resisc45-final-baselines-b0-b4-3-seeds"
-OUT_P = ROOT / "outputs" / "resisc45-final-proposed-asf-cmp-3-seeds"
-OUT_E = ROOT / "outputs" / "resisc45-final-evaluation-v2-offline"
+master = load_json("deliverables/results_master.json")
+MODELS = master["models"]
+rp = load_output_json("resisc45-final-proposed-asf-cmp-3-seeds/final_proposed_report.json")
+re_ = load_output_json("resisc45-final-evaluation-v2-offline/test_report.json")
 
-rb = json.load(open(OUT_B / "final_baselines_report.json"))
-rp = json.load(open(OUT_P / "final_proposed_report.json"))
-re_ = json.load(open(OUT_E / "test_report.json"))
-
-DISPLAY = {"smallcnn": "B0 SmallCNN", "resnet18": "B1 ResNet18", "mobilenetv3s": "B2 MobileNetV3-S",
-           "efficientnetb0": "B3 EffNet-B0", "convnextt": "B4 ConvNeXt-T",
-           "ASF_A2fix_ent": "ASF (proposed)", "CMP_C2": "CMP (proposed)"}
-ORDER = ["smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt", "ASF_A2fix_ent", "CMP_C2"]
-COL = {"B1": "#4c78a8", "proposed": "#e45756", "other": "#9aa0a6"}
+ORDER = [
+    "smallcnn", "mobilenetv3s", "resnet18", "CMP_C2", "ASF_A2fix_ent",
+    "cmp_exp_ce", "cmp_exp_kd", "asf_kd", "resnet18_kd", "efficientnetb0", "convnextt",
+]
+SHORT = {
+    "smallcnn": "B0 SmallCNN",
+    "mobilenetv3s": "B2 MobileNetV3-S",
+    "resnet18": "B1 ResNet18-CE",
+    "CMP_C2": "CMP-CE (v1)",
+    "ASF_A2fix_ent": "ASF-CE (v1)",
+    "cmp_exp_ce": "CMP-exp-CE (v4)",
+    "cmp_exp_kd": "CMP-exp-KD (v4)",
+    "asf_kd": "ASF-KD (v3)",
+    "resnet18_kd": "ResNet18-KD (v3)",
+    "efficientnetb0": "B3 EffNet-B0",
+    "convnextt": "B4 ConvNeXt-T",
+}
+COL = {"B1": "#4c78a8", "proposed": "#e45756", "cmp_exp": "#54a24b", "kd": "#f58518", "other": "#9aa0a6"}
 
 
 def color_of(key: str) -> str:
     if key == "resnet18":
         return COL["B1"]
+    if key in ("cmp_exp_ce", "cmp_exp_kd"):
+        return COL["cmp_exp"]
     if key in ("ASF_A2fix_ent", "CMP_C2"):
         return COL["proposed"]
+    if key in ("resnet18_kd", "asf_kd"):
+        return COL["kd"]
     return COL["other"]
 
 
-# 1) Val F1 mean ± std — bar
-fig, ax = plt.subplots(figsize=(9, 4.5))
-keys = [k for k in ORDER if k in DISPLAY]
-means, stds, colors = [], [], []
-for k in keys:
-    rows = ([e for e in rb["results"] if e["model"] == k] if k in ("smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt")
-            else [e for e in rp["results"] if e["variant"] == k])
-    f1s = [e["best_val_macro_f1"] for e in rows]
-    means.append(float(np.mean(f1s)))
-    stds.append(float(np.std(f1s, ddof=1)))
-    colors.append(color_of(k))
+# 1) Val F1 mean ± std — bar (đủ 11 mô hình từ results_master)
+fig, ax = plt.subplots(figsize=(11, 4.8))
+keys = [k for k in ORDER if k in MODELS]
+means = [MODELS[k]["val_f1_3seed"]["mean"] for k in keys]
+stds = [MODELS[k]["val_f1_3seed"]["std"] for k in keys]
+colors = [color_of(k) for k in keys]
 bars = ax.bar(range(len(keys)), means, yerr=stds, capsize=4, color=colors)
 ax.set_xticks(range(len(keys)))
-ax.set_xticklabels([DISPLAY[k] for k in keys], rotation=20, ha="right", fontsize=9)
+ax.set_xticklabels([SHORT[k] for k in keys], rotation=22, ha="right", fontsize=9)
 ax.set_ylabel("Val macro-F1 (3 seeds)")
-ax.set_title("Final validation macro-F1, mean ± std over seeds {0,1,2} (15 epochs)")
+ax.set_title("Validation macro-F1, mean ± std over seeds {0,1,2} (15 epochs)")
 ax.set_ylim(0.5, 1.0)
-for b, m, s in zip(bars, means, stds):
-    ax.text(b.get_x() + b.get_width() / 2, m + s + 0.005, f"{m:.4f}", ha="center", fontsize=8)
+for b, m, s in zip(bars, means, stds, strict=True):
+    ax.text(b.get_x() + b.get_width() / 2, m + s + 0.005, f"{m:.4f}", ha="center", fontsize=7.5)
 fig.tight_layout()
 fig.savefig(FIG / "fig_val_f1_final.png", dpi=150)
 plt.close(fig)
 
-# 2) TEST F1 vs latency — scatter
-fig, ax = plt.subplots(figsize=(7.5, 5))
+# 2) TEST F1 vs latency — scatter (đủ 11 mô hình từ results_master)
+fig, ax = plt.subplots(figsize=(8.2, 5.2))
 for k in keys:
-    t = re_["test_results"][k]
-    l = re_["latency"][k]
-    ax.scatter(l["median_ms"], t["macro_f1"], s=110, color=color_of(k), zorder=3)
-    ax.annotate(DISPLAY[k], (l["median_ms"], t["macro_f1"]), textcoords="offset points",
-                xytext=(7, 4), fontsize=8)
+    e = MODELS[k]
+    lat = e.get("latency_ms_3seed_mean") or e.get("latency_ms_bestvalseed")
+    f1_val = e["test_3seed_f1"]["mean"]
+    ax.scatter(lat, f1_val, s=110, color=color_of(k), zorder=3)
+    ax.annotate(SHORT[k], (lat, f1_val), textcoords="offset points", xytext=(7, 4), fontsize=8)
 ax.set_xlabel("Latency batch-1 (ms, median)")
-ax.set_ylabel("TEST macro-F1")
-ax.set_title("TEST macro-F1 vs latency (4,725 test images)")
+ax.set_ylabel("TEST macro-F1 (3-seed mean)")
+ax.set_title("TEST macro-F1 (3 seeds) vs latency (4,725 test images)")
 ax.grid(alpha=0.3)
 fig.tight_layout()
 fig.savefig(FIG / "fig_test_f1_latency.png", dpi=150)
 plt.close(fig)
 
-# 3) Robustness delta — grouped bars (5 model chính, bỏ B0 cho đọc)
-rob = pd.read_csv(OUT_E / "robustness_table.csv", index_col=0)
-sel = [k for k in ORDER if k in rob.index and k != "smallcnn"]
+# 3) Robustness delta — grouped bars (5 model chính từ 070b)
+rob = pd.read_csv(ROOT / "outputs" / "resisc45-final-evaluation-v2-offline" / "robustness_table.csv", index_col=0)
+sel = [k for k in ("resnet18", "ASF_A2fix_ent", "CMP_C2", "efficientnetb0", "convnextt") if k in rob.index]
 corrs = [c for c in rob.columns if c != "clean"]
 x = np.arange(len(corrs))
 w = 0.8 / len(sel)
 fig, ax = plt.subplots(figsize=(10, 4.8))
 for i, k in enumerate(sel):
     delta = (rob.loc[k, corrs].astype(float) - rob.loc[k, "clean"]).values
-    ax.bar(x + i * w, delta, w, label=DISPLAY[k], color=color_of(k))
+    ax.bar(x + i * w, delta, w, label=SHORT[k], color=color_of(k))
 ax.set_xticks(x + w * (len(sel) - 1) / 2)
 ax.set_xticklabels(["blur σ1", "blur σ2", "JPEG q30", "JPEG q60", "bright ×0.6", "×1.4"])
 ax.axhline(0, color="k", lw=0.8)
@@ -104,7 +111,7 @@ plt.close(fig)
 
 # 4) ASF gate mean per component — 3 seeds
 fig, ax = plt.subplots(figsize=(8, 4.2))
-comps = ["LL2", "LH2", "HL2", "HH2", "LL4", "LH4", "HL4", "HH4"]
+comps = ["ORIG2", "LH2", "HL2", "HH2", "ORIG4", "LH4", "HL4", "HH4"]
 xs = np.arange(8)
 for e in sorted([e for e in rp["results"] if e["variant"] == "ASF_A2fix_ent"], key=lambda e: e["seed"]):
     g = e["gate_summary"]
@@ -132,9 +139,8 @@ if data_root.is_dir():
     fig.savefig(FIG / "fig_class_dist.png", dpi=150)
     plt.close(fig)
 
-    from PIL import Image
     fig, axes = plt.subplots(5, 9, figsize=(11, 6.5))
-    for ax, c in zip(axes.flat, classes):
+    for ax, c in zip(axes.flat, classes, strict=True):
         img = Image.open(next(c.glob("*.jpg")))
         ax.imshow(img)
         ax.set_title(c.name, fontsize=6)

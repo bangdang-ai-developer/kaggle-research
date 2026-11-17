@@ -37,6 +37,18 @@ MODELS = {
                                         "resisc45-kd-final-seeds-1-2", "ckpt_asf_kd_s1.pt"),
     "CMP C2 (proposed v1)": ("cmp", {"cmp_n_proto": 2},
                              "resisc45-final-proposed-asf-cmp-3-seeds", "ckpt_CMP_C2_s1.pt"),
+    "CMP-exp-CE (proposed v4, best val s1)": (
+        "cmp",
+        {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp"},
+        "resisc45-cmp-exp-3-seeds-and-test-eval",
+        "ckpt_cmp_exp_ce_s1.pt",
+    ),
+    "CMP-exp-KD (proposed v4, best val s0)": (
+        "cmp",
+        {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp", "kd_alpha": 0.5, "kd_T": 4.0},
+        "resisc45-h1a-screen-cmp-exp-asf-lite",
+        "ckpt_cmp_exp_kd.pt",
+    ),
 }
 CORRUPTIONS = {"Không": (None, None), "Blur σ1": ("blur", 1.0), "Blur σ2": ("blur", 2.0),
                "JPEG q30": ("jpeg", 30), "JPEG q60": ("jpeg", 60),

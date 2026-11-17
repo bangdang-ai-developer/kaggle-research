@@ -1,0 +1,35 @@
+{
+  "plan_id": "final_plan_v4_cmp_exp",
+  "created_at": "2026-11-16",
+  "screening_source": "outputs/resisc45-h1a-screen-cmp-exp-asf-lite/h1a_screen_report.json",
+  "decision": {
+    "promote": ["cmp_exp_ce", "cmp_exp_kd"],
+    "stop_at_screening": ["asf_lite_ce", "asf_lite_kd"],
+    "reason": "CMP-exp phá trần softmax 13.32% (KD loss 18.46 -> 0.508), vượt ResNet18 s0 ở cả CE (+0.59%) và KD (+0.11%), không collapse (inter-cos 0.55/0.61). ASF-Lite không vượt ASF v1 KD (0.9555 vs 0.9565) và latency cao hơn (4.07-4.28ms) nên dừng ở screening."
+  },
+  "split_manifest_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a",
+  "seeds": [0, 1, 2],
+  "seed0_reuse_kernel": "dangbang1/resisc45-h1a-screen-cmp-exp-asf-lite",
+  "teacher": {"model_key": "convnextt", "seed": 2, "sha256_prefix": "9627ca43"},
+  "configs": {
+    "cmp_exp_ce": {
+      "model_key": "cmp",
+      "cmp_n_proto": 2,
+      "cmp_agg": "hardmax",
+      "cmp_kmeans_init": true,
+      "cmp_scale_mode": "exp",
+      "kd_alpha": 0.0,
+      "epochs": 15
+    },
+    "cmp_exp_kd": {
+      "model_key": "cmp",
+      "cmp_n_proto": 2,
+      "cmp_agg": "hardmax",
+      "cmp_kmeans_init": true,
+      "cmp_scale_mode": "exp",
+      "kd_alpha": 0.5,
+      "kd_T": 4.0,
+      "epochs": 15
+    }
+  }
+}

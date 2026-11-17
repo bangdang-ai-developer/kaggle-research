@@ -29,6 +29,11 @@ MODELS = {
     "B1-CE s2": ("resnet18", {}, ROOT / "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_resnet18_s2.pt"),
     "ASF-KD s1": ("asf", {"asf_out_init": "small", "asf_gate_ent": 0.05},
                   ROOT / "outputs/resisc45-kd-final-seeds-1-2/ckpt_asf_kd_s1.pt"),
+    "CMP-exp-CE s1": ("cmp", {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp"},
+                      ROOT / "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/ckpt_cmp_exp_ce_s1.pt"),
+    "CMP-exp-KD s0": ("cmp", {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp",
+                              "kd_alpha": 0.5, "kd_T": 4.0},
+                      ROOT / "outputs/resisc45-h1a-screen-cmp-exp-asf-lite/ckpt_cmp_exp_kd.pt"),
 }
 
 sample_img = DATA / "airplane" / "airplane_001.jpg"  # ảnh TRAIN — không dùng test làm gallery

@@ -145,13 +145,13 @@ notes(s, "Checkpoint rule chỉ theo validation — điểm quan trọng với g
 s = slide("Kết quả TEST — đủ 3 seeds (mean ± std)")
 rows = []
 for k in ("smallcnn", "resnet18", "resnet18_kd", "mobilenetv3s", "efficientnetb0", "convnextt",
-          "ASF_A2fix_ent", "asf_kd", "CMP_C2"):
+          "ASF_A2fix_ent", "asf_kd", "CMP_C2", "cmp_exp_ce", "cmp_exp_kd"):
     e = MO[k]
     rows.append([e["display"], f"{e['test_3seed_acc']['mean']*100:.2f}±{e['test_3seed_acc']['std']*100:.2f}",
                  f"{e['test_3seed_f1']['mean']*100:.2f}±{e['test_3seed_f1']['std']*100:.2f}",
                  f"{e['params_total_m']:.2f}", f"{e['latency_ms_3seed_mean']:.2f}" if "latency_ms_3seed_mean" in e else f"{e['latency_ms_bestvalseed']:.2f}"])
-result_table(s, rows, ["Model", "Test Acc %", "Test F1 %", "Params M", "Lat ms"], top=2.8, row_h=1.25, fs=13)
-notes(s, "Bảng này là đánh giá mở rộng công bằng đủ 3 seed. B4 cao nhất; ResNet18-KD 96.02 vượt B1-CE 95.37.")
+result_table(s, rows, ["Model", "Test Acc %", "Test F1 %", "Params M", "Lat ms"], top=2.4, row_h=1.05, fs=12)
+notes(s, "Bảng này là đánh giá mở rộng công bằng đủ 3 seed. CMP-exp-CE vượt B1 (95.48 vs 95.37); ResNet18-KD cao nhất nhóm nhỏ (96.02).")
 
 # 8 Thay đổi kết luận sau 3-seed
 s = slide("Điều thay đổi khi đánh giá đủ 3 seeds")
@@ -210,6 +210,17 @@ bullets(s, [
 ], top=2.8, size=19)
 notes(s, "Đây là đóng góp chính của v3 — cải thiện lớn nhất, nhất quán, chi phí inference bằng không.")
 
+# 13b V4 Hướng A — CMP-exp phá trần softmax
+s = slide("V4 (Hướng A) — Sửa κ = exp(θ) cho CMP")
+bullets(s, [
+    ("Phát hiện lỗi: logit_scale khởi tạo ln(10) nhưng quên .exp() → κ ≤ 4.605, trần softmax 13.32% ở T=4", 0, True),
+    ("Sửa κ = exp(θ) ∈ [10, 64] + hard-max + k-means (CMP-exp):", 0, True),
+    ("CMP-exp-CE: 95.44% val (3/3 thắng B1) · 95.48% F1 test (vượt CMP v1 +0.39% 3/3 seed & B1 95.37%)", 1, False),
+    ("CMP-exp-KD: KD loss 15.21 → 0.51 (hết kẹt 18.46) → 95.74% ± 0.05% test (thắng CMP-exp-CE 3/3 seed)", 1, False),
+    ("Latency đo cùng máy: CMP-exp 3.69–3.71 ms ≈ ResNet18 4.11 ms (không tăng chi phí suy luận)", 0, False),
+], top=2.6, size=18)
+notes(s, "V4 khép kín vòng lặp chẩn đoán → sửa lỗi → kiểm chứng 3-seed. ASF-Lite dừng ở screening vì chậm hơn ASF v1.")
+
 # 14 Bức tranh tổng
 s = slide("Bức tranh tổng — kiến trúc vs distillation")
 bullets(s, [
@@ -231,7 +242,7 @@ bullets(s, [
 # 16 Demo
 s = slide("Demo (Streamlit, local)")
 bullets(s, [
-    ("5 model: B1-CE, B1-KD, ASF-CE, ASF-KD, CMP — checkpoint chọn theo validation", 0, False),
+    ("7 model: B1-CE, B1-KD, ASF-CE, ASF-KD, CMP-v1, CMP-exp-CE, CMP-exp-KD — chọn theo validation", 0, False),
     ("Top-3 dự đoán + xác suất; model-only vs end-to-end latency phân biệt rõ", 0, False),
     ("7 corruption minh họa; teacher không xuất hiện trong inference; chạy offline", 0, False),
     ("Chạy: uv run streamlit run demo/app.py", 0, False),
@@ -251,8 +262,8 @@ bullets(s, [
 s = slide("Kết luận")
 bullets(s, [
     ("ASF + entropy reg: cơ chế gate hoạt động đúng thiết kế, cải thiện validation 3/3 seed", 0, False),
-    ("CMP: chẩn đoán đúng (collapse thật, margin sai chiều) nhưng chưa tìm được cấu hình vượt backbone", 0, False),
-    ("KD từ teacher cùng-domain: cải thiện lớn nhất và nhất quán — ResNet18-KD 96.02% test", 0, True),
+    ("CMP-exp (v4, sửa κ=exp(θ)): vượt B1 ở CE (95.48% vs 95.37% test; 95.44% vs 95.04% val) & mở khóa KD (95.74%)", 0, True),
+    ("KD từ teacher cùng-domain: cải thiện lớn nhất — ResNet18-KD 96.02% test @ 2.53ms", 0, True),
     ("Toàn bộ negative results được giữ kèm phân tích cơ học; mọi số truy ngược được artifact", 0, False),
 ], top=2.8, size=19)
 

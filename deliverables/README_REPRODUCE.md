@@ -32,6 +32,7 @@ Ngoài ZIP (nằm trong repo `kaggle-research`):
 | 6 | 080 + 090 | resisc45-screen-*-v2/v3 | screening v2 |
 | 7 | 100b → 110b → 111 | resisc45-kd-* | KD pilot → screening → final |
 | 8 | 112c | resisc45-eval-kd-3-seeds-v2-fixed-sources | test eval KD 3-seed |
+| 9 | 120 → 121 | resisc45-h1a-screen-* / resisc45-cmp-exp-3-seeds-and-test-eval | v4 Hướng A: CMP κ=exp screening → 3-seed + test eval |
 
 Quy tắc: kernel chạy theo thứ tự phụ thuộc (kernel sau attach output kernel trước qua `kernel_sources`);
 mọi kernel huấn luyện tự stage dataset sang disk local; checkpoint chọn theo validation macro-F1; test chỉ

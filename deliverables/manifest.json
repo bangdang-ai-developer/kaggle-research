@@ -19,6 +19,14 @@
   "size_bytes": 46520975,
   "sha256": "228917f649ecfd6390587995bb32bda13c28d700595f87d968fe46d1f8e4475b"
  },
+ "outputs/resisc45-h1a-screen-cmp-exp-asf-lite/ckpt_cmp_exp_kd.pt": {
+  "size_bytes": 46032157,
+  "sha256": "dddb553f9a5d61dcfd5072629ca3661b2cfc991303033e19302b2681ac257447"
+ },
+ "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/ckpt_cmp_exp_ce_s1.pt": {
+  "size_bytes": 46032550,
+  "sha256": "96fe2a9a92d61be0158ca40bcad1e84e6cb44ca2a629b8854b36743ad2e323ac"
+ },
  "outputs/resisc45-data-audit-split-manifest/split_manifest.csv": {
   "size_bytes": 2159094,
   "sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a"
@@ -46,5 +54,17 @@
  "outputs/resisc45-kd-final-seeds-1-2/kd_final_report.json": {
   "size_bytes": 29089,
   "sha256": "4429698faac206d668f7861154107054c4bdaf4db1cec787769239ac653117e8"
+ },
+ "outputs/resisc45-h1a-screen-cmp-exp-asf-lite/h1a_screen_report.json": {
+  "size_bytes": 31965,
+  "sha256": "06752a9df943161dc63803811e5593c5304f3596fc6afdd8c08f0e52043fcaf0"
+ },
+ "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/cmp_exp_final_report.json": {
+  "size_bytes": 33803,
+  "sha256": "2749f093c24ded7c98c4ac61d0d83d53def69379ea9749dddc74fd33895c1a0b"
+ },
+ "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/cmp_exp_test_3seed_report.json": {
+  "size_bytes": 3003,
+  "sha256": "5709669157f86e027a35a0b283944252fe68bfe255411a43c7ea1a07fd5483e7"
  }
 }

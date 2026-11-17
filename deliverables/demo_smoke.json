@@ -15,7 +15,7 @@
      0.0
     ]
    ],
-   "latency_ms": 10.9,
+   "latency_ms": 10.5,
    "probs_sum": 1.0
   },
   "ASF-KD s1": {
@@ -33,7 +33,43 @@
      0.0
     ]
    ],
-   "latency_ms": 10.5,
+   "latency_ms": 10.7,
+   "probs_sum": 1.0
+  },
+  "CMP-exp-CE s1": {
+   "top3": [
+    [
+     "airplane",
+     0.9998
+    ],
+    [
+     "desert",
+     0.0
+    ],
+    [
+     "intersection",
+     0.0
+    ]
+   ],
+   "latency_ms": 10.3,
+   "probs_sum": 1.0
+  },
+  "CMP-exp-KD s0": {
+   "top3": [
+    [
+     "airplane",
+     1.0
+    ],
+    [
+     "airport",
+     0.0
+    ],
+    [
+     "palace",
+     0.0
+    ]
+   ],
+   "latency_ms": 10.0,
    "probs_sum": 1.0
   }
  },

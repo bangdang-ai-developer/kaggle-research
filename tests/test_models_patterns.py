@@ -17,19 +17,21 @@ from common import mean_std, mean_std_dict
 
 from models import (
     MODEL_REGISTRY,
+    ASFLiteResNet18,
     ASFResNet18,
     CMPResNet18,
     EarlyStopper,
     KDDistiller,
     TrainConfig,
     build_model,
+    count_params,
     register_model,
     train_model,
 )
 
 
 def test_model_registry_contains_all_expected_keys():
-    expected = {"smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt", "asf", "cmp"}
+    expected = {"smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt", "asf", "asf_lite", "cmp"}
     assert expected.issubset(MODEL_REGISTRY.keys())
 
 
@@ -163,6 +165,16 @@ def test_existing_checkpoints_strict_load():
             ROOT / "outputs/resisc45-kd-final-seeds-1-2/ckpt_asf_kd_s1.pt",
         ),
         ("cmp", {"cmp_n_proto": 2}, ROOT / "outputs/resisc45-final-proposed-asf-cmp-3-seeds/ckpt_CMP_C2_s1.pt"),
+        (
+            "cmp",
+            {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp"},
+            ROOT / "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/ckpt_cmp_exp_ce_s1.pt",
+        ),
+        (
+            "cmp",
+            {"cmp_n_proto": 2, "cmp_agg": "hardmax", "cmp_scale_mode": "exp"},
+            ROOT / "outputs/resisc45-cmp-exp-3-seeds-and-test-eval/ckpt_cmp_exp_kd_s1.pt",
+        ),
     ]
     present = [(mk, ov, p) for mk, ov, p in cases if p.exists()]
     if not present:
@@ -192,3 +204,35 @@ def test_corruption_strategies_preserve_rgb_size():
     blurred = img.filter(ImageFilter.GaussianBlur(1.0))
     bright = ImageEnhance.Brightness(img).enhance(1.2)
     assert blurred.size == (64, 64) and bright.size == (64, 64)
+
+
+def test_asf_lite_forward_gates_and_param_budget():
+    m = build_model(TrainConfig(model_key="asf_lite", num_classes=45, asf_out_init="small"), pretrained=False)
+    assert isinstance(m, ASFLiteResNet18)
+    x = torch.randn(2, 3, 256, 256)
+    out = m(x)
+    assert out.shape == (2, 45)
+    ent = m.gate_entropy_loss()
+    assert ent.ndim == 0
+    w = m.gate_weights(x)
+    assert w.shape == (2, 8)
+    assert torch.allclose(w.sum(dim=-1), torch.ones(2), atol=1e-5)
+    assert count_params(m)["total"] < 11_600_000
+
+
+def test_cmp_exp_scale_breaks_kd_softmax_ceiling():
+    m_lin = build_model(TrainConfig(model_key="cmp", num_classes=45, cmp_n_proto=2, cmp_scale_mode="linear"), False)
+    m_exp = build_model(TrainConfig(model_key="cmp", num_classes=45, cmp_n_proto=2, cmp_scale_mode="exp"), False)
+    assert isinstance(m_lin, CMPResNet18) and isinstance(m_exp, CMPResNet18)
+    assert m_lin.current_kappa().item() == pytest.approx(np.log(10.0), rel=1e-4)
+    assert m_exp.current_kappa().item() == pytest.approx(10.0, rel=1e-4)
+
+    # Ở cos=1 vs 0 với T=4: linear cap ~13.3%, exp mode vượt xa trần teacher
+    e = torch.zeros(1, 512)
+    e[0, 0] = 1.0
+    m_exp.prototypes.data.zero_()
+    m_exp.prototypes.data[0, 0] = 1.0
+    with torch.no_grad():
+        m_exp.logit_scale.fill_(np.log(30.0))
+        probs_t4 = torch.softmax(m_exp.logits_from_emb(e) / 4.0, dim=1)
+    assert probs_t4.max().item() > 0.90

@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-11-16..17 (v4 Hướng A) — Sửa `κ = exp(θ)` cho CMP (`CMP-exp`) & Screening `ASF-Lite`
+
+**Phát hiện gốc:** Trong `CMPResNet18`, `logit_scale` được khởi tạo `math.log(10.0)` nhưng lại thiếu `.exp()` khi tính `kappa`, khiến `κ ≤ 4.605` (tạo trần softmax `13.32%` dưới KD như `v3b_kappa_check.json` đã chỉ ra). Đồng thời thiết kế `ASFLiteResNet18` (`layer2+layer3` Haar DWT + RMS, bỏ 8 nhánh conv lặp).
+
+**Screening seed 0 (kernel `120-h1a-screen` — `outputs/resisc45-h1a-screen-cmp-exp-asf-lite/h1a_screen_report.json`):**
+- `cmp_exp_ce`: val F1 **0.9542** (+0.59% vs B1 s0 `0.9483`), `κ = 14.26`, `inter-cos = 0.553`
+- `cmp_exp_kd`: val F1 **0.9561** (+0.11% vs RN18-KD s0 `0.9550`), `KD loss: 15.21 → 0.508` (hết kẹt `18.46`), `κ = 19.38`
+- `asf_lite_ce` (`0.9504`) / `asf_lite_kd` (`0.9555`): không vượt `ASF v1 KD` (`0.9565`) và latency cao hơn (`4.07–4.28 ms`) → dừng ở screening theo `notes/final_plan_v4_cmp_exp.json`.
+
+**Final 3-seed Val + TEST (`121-cmp-exp-final-eval` — `outputs/resisc45-cmp-exp-3-seeds-and-test-eval/`):**
+- `CMP-exp-CE`: Val **0.9544 ± 0.0010** (3/3 thắng B1); **TEST 0.9549 acc / 0.9548 ± 0.0021 F1** — paired vs `CMP v1` **+0.39% (3/3)**, paired vs `B1` **+0.11% (2/3)**, same-machine latency **3.69 ms** vs ResNet18 `4.11 ms`.
+- `CMP-exp-KD`: Val **0.9557 ± 0.0005**; **TEST 0.9573 acc / 0.9574 ± 0.0005 F1** — paired vs `CMP-exp-CE` **+0.26% (3/3)**, `std = 0.0005` thấp nhất nhóm KD (vẫn dưới `ResNet18-KD` `0.9601`).
+
+---
+
 ## 2026-10-29 (v3) — KD round HOÀN TẤT: distillation cải thiện thật, nhất quán 3/3 seed trên test
 
 **Pipeline:** diagnostics K1–K5 PASS → pilot 100b (teacher verify hash `9627ca43`, val acc 0.9692; KD 100–104s/epoch) → screening 110b (RN18-KD +0.67%, ASF-KD +0.58% vs CE s0; CMP-KD negative → dừng) → final 111 (seeds 1,2) → test eval 112c (6 checkpoints).

@@ -11,14 +11,15 @@
 5. **Gate sau entropy reg gần đều** (max_mean 0.14–0.19): chưa có bằng chứng gate chọn mạnh theo nội dung ảnh; cơ chế lợi ích chưa chứng minh nhân quả.
 6. **Latency +52%** so B1 (3.82 vs 2.52 ms median, 3-seed mean) — chi phí cần tính nếu ứng dụng hạn chế.
 
-## 2. Về kết quả CMP (chưa thắng)
+## 2. Về kết quả CMP (đã sửa ở v4 Hướng A)
 
-1. **Negative result chính thức:** 7 cấu hình qua 2 vòng — v1: C1 0.9422 / C2 0.9441 / C3 0.9404 / C2fix 0.9398 / C3fix 0.9413 (screen 8ep); v2: CMP-P 0.9394 / CMP-PG 0.9416. Tốt nhất vẫn là C2 v1; test 3-seed 0.9509 vs B1 0.9537 (paired 0/3 seed dương).
-2. **Prototype collapse bền vững** (inter-cos = 1.0 mọi seed v1). V2 hard-max đã phá collapse cơ học (inter-cos → 0.73) **nhưng F1 không tăng** (0.9394/0.9416) — 2 prototype tách nhau mà không cùng được dùng (minority ≈ 0) → vấn đề không nằm ở head prototype.
-3. **Cơ chế collapse đầy đủ chưa được tái lập** trong synthetic (LSE/hard-max với embedding cố định đều tách nhau) — nghi parallel-drift qua LSE murette + embedding chuyển động; ghi "chưa đủ bằng chứng".
-4. **Confusion margin v1 sai chiều đã xác nhận** (diagnostics D1: giảm CE mẫu khó, giảm gradient lớp khó) — v2 pair loss sửa chiều nhưng cũng không mang lợi ích F1.
-5. **Trần soft-max tham số hóa CMP** (v3 kappa check, `notes/v3b_kappa_check.json`): logits = κ·cos bị chặn [−κ, κ] với κ học được 3.823 → trần soft-max student 13.32%/lớp (T=4); teacher soft targets median 0.5985 → **99.43% teacher targets vượt trần student** — KD loss không thể hội tụ. Hướng tiếp ưu tiên: tham số hóa scale kiểu ArcFace (κ = exp(θ), scale 30–64) trước khi thêm loss/kiến trúc mới.
-6. Hướng tiếp khác (đề xuất, chưa chạy): prototype điều hòa (orthogonal init + hinge trực tiếp), hoặc chấp nhận cosine/FC head đơn giản cho task này.
+1. **Vòng v1–v3 (negative result gốc):** 7 cấu hình qua 2 vòng — v1: C1 0.9422 / C2 0.9441 / C3 0.9404 / C2fix 0.9398 / C3fix 0.9413; v2: CMP-P 0.9394 / CMP-PG 0.9416. Tốt nhất v1 là C2 (test 3-seed 0.9509 vs B1 0.9537, paired 0/3).
+2. **Prototype collapse & sửa ở v2:** Prototype collapse bền vững (inter-cos = 1.0) đã được v2 hard-max + k-means phá về 0.73, nhưng F1 v2 vẫn chưa tăng do lỗi tham số hóa `κ` bên dưới.
+3. **Cơ chế collapse đầy đủ chưa được tái lập** trong synthetic (LSE/hard-max với embedding cố định đều tách nhau) — nghi parallel-drift qua LSE + embedding chuyển động; ghi "chưa đủ bằng chứng".
+4. **Confusion margin v1 sai chiều đã xác nhận** (diagnostics D1: giảm CE mẫu khó, giảm gradient lớp khó) — v2 pair loss sửa chiều nhưng chưa thử kết hợp lại sau khi sửa `κ = exp(θ)`.
+5. **Nguyên nhân gốc & kết quả sau khi sửa ở v4 (`CMP-exp`):** Chẩn đoán `notes/v3b_kappa_check.json` phát hiện `logit_scale` quên `.exp()` khiến `κ ≤ ln 100 ≈ 4.605` (trần softmax `13.32%` dưới KD). Khi sửa `κ = exp(θ) ∈ [10, 64]` kết hợp `hardmax` + `k-means init` (`notes/final_plan_v4_cmp_exp.json`):
+   - `CMP-exp-CE` đạt **0.9544 ± 0.0010** val (3/3 thắng B1) và **0.9548 ± 0.0021** test F1 (thắng `CMP v1` +0.39% 3/3 seed và thắng `B1` +0.11% 2/3 seed).
+   - `CMP-exp-KD` hội tụ sạch (`KD loss 15.21 → 0.508`), đạt **0.9574 ± 0.0005** test F1 (thắng `CMP-exp-CE` 3/3 seed) — vẫn thấp hơn `ResNet18-KD` (`0.9601`) do `hard-max` bỏ quên prototype thứ yếu (`minority_ratio ≈ 0.005`).
 
 ## 2b. Về vòng v2 (diagnostics + 4 candidate)
 

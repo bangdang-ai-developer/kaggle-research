@@ -83,6 +83,7 @@ class TrainConfig:
     cmp_diversity: bool = False           # C4
     cmp_div_weight: float = 0.01
     cmp_embed_dim: int = 512
+    cmp_scale_mode: str = "linear"        # "linear" (v1/v2/v3) | "exp" (sửa trần softmax κ = exp(θ))
     # chung
     label_smoothing: float = 0.0
     extra: dict = field(default_factory=dict)
@@ -224,6 +225,16 @@ def _build_asf(cfg: TrainConfig, pretrained: bool) -> nn.Module:
     )
 
 
+@register_model("asf_lite")
+def _build_asf_lite(cfg: TrainConfig, pretrained: bool) -> nn.Module:
+    return ASFLiteResNet18(
+        cfg.num_classes,
+        pretrained=pretrained,
+        feature_dim=cfg.asf_feature_dim,
+        out_init=cfg.asf_out_init,
+    )
+
+
 @register_model("cmp")
 def _build_cmp(cfg: TrainConfig, pretrained: bool) -> nn.Module:
     return CMPResNet18(
@@ -237,6 +248,7 @@ def _build_cmp(cfg: TrainConfig, pretrained: bool) -> nn.Module:
         agg=cfg.cmp_agg,
         pair=cfg.cmp_pair_loss,
         pair_margin=cfg.cmp_pair_margin,
+        scale_mode=cfg.cmp_scale_mode,
     )
 
 
@@ -417,6 +429,88 @@ class ASFResNet18(nn.Module):
         return w
 
 
+class ASFLiteResNet18(nn.Module):
+    """ASF-Lite (v3+): Haar DWT trên layer2 (32×32) & layer3 (16×16) không dùng conv 2D phụ.
+
+    - Dùng GAP cho thành phần LL và RMS (non-cancelling energy) cho 3 subband cao tần (LH, HL, HH).
+    - Band gate nhẹ (16→8) chọn lọc 8 dải tần-tỉ lệ; entropy regularizer dùng chung API `gate_entropy_loss`.
+    - Loại bỏ 8 nhánh 1×1 Conv+BN lặp → giữ latency gần bằng ResNet18 gốc và giảm tham số phụ.
+    """
+
+    def __init__(self, num_classes: int = 45, pretrained: bool = True, feature_dim: int = 128,
+                 out_init: str = "small"):
+        super().__init__()
+        import torchvision
+
+        bb = torchvision.models.resnet18(
+            weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
+        )
+        self.stem = nn.Sequential(bb.conv1, bb.bn1, bb.relu, bb.maxpool)
+        self.layer1, self.layer2, self.layer3, self.layer4 = bb.layer1, bb.layer2, bb.layer3, bb.layer4
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.n_components = 8
+        in_dim = 4 * (128 + 256)  # 4 subband × (layer2 128ch + layer3 256ch) = 1536
+        self.gate = nn.Sequential(nn.LayerNorm(2 * self.n_components), nn.Linear(2 * self.n_components, 8))
+        self.proj = nn.Sequential(
+            nn.LayerNorm(in_dim),
+            nn.Linear(in_dim, feature_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.1),
+        )
+        self.out_proj = nn.Linear(feature_dim, 512)
+        if out_init == "small":
+            nn.init.normal_(self.out_proj.weight, std=1e-3)
+        else:
+            nn.init.zeros_(self.out_proj.weight)
+        nn.init.zeros_(self.out_proj.bias)
+        self.head = nn.Linear(512, num_classes)
+        self._last_gates: torch.Tensor | None = None
+
+    @staticmethod
+    def _band_vectors(fm: torch.Tensor) -> list[torch.Tensor]:
+        ll, lh, hl, hh = haar_dwt2(fm)
+        return [
+            ll.mean(dim=(2, 3)),
+            lh.pow(2).mean(dim=(2, 3)).add(1e-6).sqrt(),
+            hl.pow(2).mean(dim=(2, 3)).add(1e-6).sqrt(),
+            hh.pow(2).mean(dim=(2, 3)).add(1e-6).sqrt(),
+        ]
+
+    def _compute_bands_and_gates(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor], torch.Tensor]:
+        h1 = self.layer1(self.stem(x))
+        f2 = self.layer2(h1)
+        f3 = self.layer3(f2)
+        f4 = self.layer4(f3)
+        bands = self._band_vectors(f2) + self._band_vectors(f3)
+        stats = [b.abs().mean(dim=1) for b in bands] + [b.pow(2).mean(dim=1).add(1e-6).sqrt() for b in bands]
+        w = torch.softmax(self.gate(torch.stack(stats, dim=1)), dim=-1)  # (B, 8)
+        return f4, bands, w
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        f4, bands, w = self._compute_bands_and_gates(x)
+        self._last_gates = w
+        scaled = torch.cat([b * (w[:, i : i + 1] * self.n_components) for i, b in enumerate(bands)], dim=1)
+        delta = self.out_proj(self.proj(scaled))
+        backbone_vec = self.pool(f4).flatten(1)
+        return self.head(backbone_vec + delta)
+
+    def gate_entropy_loss(self) -> torch.Tensor:
+        if self._last_gates is None:
+            return torch.zeros((), device=next(self.parameters()).device)
+        p = self._last_gates.clamp_min(1e-8)
+        h = -(p * p.log()).sum(-1).mean()
+        return (math.log(self.n_components) - h) / math.log(self.n_components)
+
+    def gate_weights(self, x: torch.Tensor) -> torch.Tensor:
+        was_training = self.training
+        self.eval()
+        with torch.no_grad():
+            _f4, _bands, w = self._compute_bands_and_gates(x)
+        if was_training:
+            self.train()
+        return w
+
+
 # ---------------------------------------------------------------- CMP-ResNet18
 
 _CMP_AGGREGATORS: dict[str, Callable[[torch.Tensor, torch.Tensor, int], torch.Tensor]] = {
@@ -437,7 +531,7 @@ class CMPResNet18(nn.Module):
     def __init__(self, num_classes: int = 45, pretrained: bool = True, n_proto: int = 1,
                  embed_dim: int = 512, confusion: bool = False, conf_margin: float = 0.3,
                  diversity: bool = False, agg: str = "lse", pair: bool = False,
-                 pair_margin: float = 0.1):
+                 pair_margin: float = 0.1, scale_mode: str = "linear"):
         super().__init__()
         import torchvision
 
@@ -456,6 +550,7 @@ class CMPResNet18(nn.Module):
         self.cmp_agg = agg
         self.cmp_pair = pair
         self.pair_margin = pair_margin
+        self.scale_mode = scale_mode
         self.register_buffer("conf_w", torch.zeros(num_classes, num_classes))
 
     def set_confusion(self, w: np.ndarray) -> None:
@@ -466,11 +561,15 @@ class CMPResNet18(nn.Module):
         z = self.pool(self.backbone(x)).flatten(1)
         return F.normalize(self.embed(z), dim=-1)
 
+    def current_kappa(self) -> torch.Tensor:
+        if self.scale_mode == "exp":
+            return self.logit_scale.exp().clamp(max=64.0)
+        return self.logit_scale.clamp(max=math.log(100.0))
+
     def _cosine_sim(self, e: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         p = F.normalize(self.prototypes, dim=-1)
         sim = (e @ p.T).view(-1, self.C, self.K)
-        kappa = self.logit_scale.clamp(max=math.log(100.0))
-        return sim, kappa
+        return sim, self.current_kappa()
 
     def _off_diag_conf_weights(self, labels: torch.Tensor) -> torch.Tensor:
         labels = labels.to(self.conf_w.device)

@@ -119,7 +119,7 @@ r.font.size = Pt(10)
 
 # ================= TÓM TẮT =================
 H1("Tóm tắt")
-P("Báo cáo trình bày ba vòng nghiên cứu (v1, v2, v3) về phân loại 45 cảnh ảnh viễn thám trên bộ "
+P("Báo cáo trình bày bốn vòng nghiên cứu (v1, v2, v3, v4 Hướng A) về phân loại 45 cảnh ảnh viễn thám trên bộ "
   "NWPU-RESISC45 (31.500 ảnh, 256×256), với hai kiến trúc đề xuất gắn trên backbone ResNet18 pretrained: "
   "ASF (lựa chọn đặc trưng đa tỉ lệ – dải tần thích ứng theo ảnh bằng Haar wavelet và gate softmax) và "
   "CMP (bộ phân loại cosine đa prototype có hướng dẫn từ đồ thị nhầm lẫn chỉ xây trên tập train). "
@@ -129,18 +129,16 @@ P("Vòng v1 thiết lập protocol chống rò rỉ dữ liệu (split 75/10/15 
   "manifest sha256 khóa cho toàn dự án), huấn luyện đủ 3 seed cho 7 mô hình và đánh giá test một lần duy nhất. "
   "Vòng v2 thực hiện chẩn đoán bằng số trên checkpoint thật: xác nhận margin nhầm lẫn của v1 sai chiều "
   "(giảm loss trên mẫu khó), xác nhận sự sụp đổ prototype là hiện tượng thật (45/45 lớp có cặp prototype "
-  "trùng tuyệt đối), bác bỏ nhận định \"nhánh gate tắt tương đương ResNet18\", và thử 4 cấu hình sửa chữa — "
-  "không cấu hình nào vượt cấu hình v1 tương ứng nên mô hình nộp chính giữ nguyên v1. Vòng v3 áp dụng "
-  "knowledge distillation từ ConvNeXt-T (teacher frozen, T=4, α=0.5): ResNet18-KD đạt 96.02% độ chính xác "
-  "test (tăng +0.65 điểm phần trăm so với cùng kiến trúc huấn luyện CE, nhất quán 3/3 seed) và ASF-KD đạt "
-  "95.91% (tăng +0.70 điểm phần trăm, 3/3 seed) — hai mô hình nhỏ này vượt B1-CE và B2-CE, thu hẹp khoảng "
-  "cách với EfficientNet-B0 trong khi latency chỉ bằng khoảng một nửa.")
-P("Đánh giá mở rộng đủ 3 seed trên test (thực hiện ở v2 sau khi test đã được quan sát, công bố minh bạch "
-  "như nghiên cứu mở rộng) cho thấy lợi ích của ASF trên validation không giữ nguyên trên test: ASF-CE xấp xỉ "
-  "B1 trên test (−0.16 điểm phần trăm trung bình, 1/3 seed dương) — bài học về selection effect được ghi nhận "
-  "và sửa trong cách trình bày. CMP không vượt backbone gốc ở mọi vòng; bài báo cáo giữ nguyên toàn bộ kết quả "
-  "âm tính kèm phân tích cơ học. Toàn bộ thí nghiệm chạy trên Kaggle GPU (Tesla T4), tổng ~16 giờ, mọi số "
-  "liệu truy ngược được về artifact nguồn (checkpoint, report JSON, log).")
+  "trùng tuyệt đối), bác bỏ nhận định \"nhánh gate tắt tương đương ResNet18\", và thử 4 cấu hình sửa chữa. "
+  "Vòng v3 áp dụng knowledge distillation từ ConvNeXt-T (teacher frozen, T=4, α=0.5): ResNet18-KD đạt 96.02% "
+  "độ chính xác test (+0.65 điểm phần trăm so với CE, nhất quán 3/3 seed) và ASF-KD đạt 95.91% (+0.70 điểm, 3/3 seed).")
+P("Vòng v4 (Hướng A) khắc phục dứt điểm hai điểm nghẽn đã chẩn đoán ở CMP: lỗi quên hàm mũ .exp() trên "
+  "logit_scale (khiến κ bị chặn ≤ 4.605 và tạo trần softmax 13.32% dưới KD). Khi chuyển sang κ = exp(θ) ∈ [10, 64] "
+  "kết hợp hard-max và k-means init (CMP-exp), CMP-exp-CE đạt 95.48% F1 test 3-seed — vượt cả CMP v1 (+0.39 điểm, "
+  "3/3 seed) lẫn backbone gốc B1 ResNet18-CE (95.37%, +0.11 điểm, 2/3 seed test và 3/3 seed val 95.44% vs 95.04%) "
+  "mà không làm chậm suy luận (3.69 ms vs 4.11 ms ResNet18 cùng máy). Dưới KD, CMP-exp-KD hội tụ sạch (KD loss "
+  "15.21 → 0.51) và đạt 95.74% ± 0.05% F1 test (ổn định cao nhất nhóm KD). Toàn bộ thí nghiệm chạy trên Kaggle GPU "
+  "(Tesla T4, tổng ~19h), mọi số liệu truy ngược được về artifact nguồn.")
 
 # ================= 1-2 =================
 H1("1. Bài toán, yêu cầu và mục tiêu")
@@ -203,8 +201,8 @@ P("Căn cứ thiết kế: đặc trưng tổng thể (low-frequency) và chi ti
   "nhau cho từng ảnh; một cơ chế chọn nhẹ theo ảnh trên các dải tần của feature map nội tại có thể cải thiện "
   "mà không phá vỡ biểu diễn pretrained.")
 figure("fig_asf_arch.png", "Hình 1. Kiến trúc ASF-ResNet18 (phiên bản A2fix-ent dùng cho kết quả chính).")
-P("Cấu trúc: feature maps ở layer2 (128 kênh, 32×32) và layer4 (512 kênh, 16×16) được tách Haar wavelet mức 1 "
-  "thành 8 thành phần (mỗi stage gồm LL ≡ feature map gốc và 3 subband chi tiết LH/HL/HH). Mỗi thành phần qua "
+P("Cấu trúc: feature maps ở layer2 (128 kênh, 32×32) và layer4 (512 kênh, 8×8) được tách Haar wavelet mức 1 "
+  "thành 8 thành phần (mỗi stage gồm ORIG ≡ feature map gốc và 3 subband chi tiết LH/HL/HH). Mỗi thành phần qua "
   "projection 1×1 → BN → ReLU → GAP cho vector f_i (128-d). Gate MLP (1024→8) softmax sinh trọng số w_i theo "
   "từng ảnh; vector hợp nhất Σ w_i·f_i qua Linear khởi tạo nhỏ (std 1e-3) cộng residual vào đặc trưng backbone "
   "GAP(layer4) trước head phân loại 45 lớp. Entropy regularizer λ=0.05 trên w (chuẩn hóa log K) giữ gate khỏi "
@@ -246,7 +244,8 @@ H1("8. Protocol từng vòng")
 rows = [
     ("v1", "Audit + split chuẩn; final 7 mô hình × 3 seed × 15 epoch; test 1 lần (best-val seed); robustness 6 corruption", "Test best-val-seed có selection effect — được lộ ra ở vòng v2"),
     ("v2", "Diagnostics bằng số trên checkpoint; 4 candidate sửa lỗi cơ học (hard-max, energy gate, entropy anneal); mở rộng test đủ 3 seed × 7 mô hình", "Không candidate vượt cấu hình v1 → giữ v1; phát hiện selection effect"),
-    ("v3", "KD từ ConvNeXt-T (T=4, α=0.5); screening seed 0; final seeds 1–2; test đủ 3 seed cho KD models", "Kết quả mục 9–10"),
+    ("v3", "KD từ ConvNeXt-T (T=4, α=0.5); screening seed 0; final seeds 1–2; test đủ 3 seed cho KD models", "RN18-KD đạt 96.02% test; phát hiện CMP-KD bị kẹt trần softmax 13.32%"),
+    ("v4 (Hướng A)", "Sửa CMP logit_scale sang κ = exp(θ) (CMP-exp) + thử ASF-Lite; screening s0 → đưa CMP-exp lên 3 seed + TEST eval", "CMP-exp-CE đạt 95.48% F1 test (vượt CMP v1 & B1); CMP-exp-KD đạt 95.74%±0.05%"),
 ]
 table(["Vòng", "Nội dung", "Kết quả chính"], [[a, b, c] for a, b, c in rows], [1.5, 9.5, 5.5])
 P("Quy tắc chung mọi vòng: split manifest và class order không đổi; checkpoint selection chỉ theo validation "
@@ -259,20 +258,21 @@ H2("9.1. Validation (3 seeds, mean ± std)")
 table(["Model", "Val F1", "Val Acc"],
       [[MODELS[k]["display"], fmt_ms(MODELS[k]["val_f1_3seed"]), fmt_ms(MODELS[k]["val_acc_3seed"])]
        for k in ("smallcnn", "resnet18", "mobilenetv3s", "efficientnetb0", "convnextt",
-                 "ASF_A2fix_ent", "CMP_C2", "resnet18_kd", "asf_kd")],
+                 "ASF_A2fix_ent", "CMP_C2", "cmp_exp_ce", "resnet18_kd", "asf_kd", "cmp_exp_kd")],
       [6.0, 4.0, 4.0])
 H2("9.2. Test — bảng tổng hợp đầy đủ (đủ 3 seed)")
 H2 = doc.add_heading("Ghi chú: Std là độ lệch chuẩn giữa training seeds (không phải giữa ảnh). "
                      "Bảng 9.2 là đánh giá mở rộng công bằng; bảng best-val-seed ở phụ lục A.", level=3)
 table(HDR,
       [mrow(k) for k in ("smallcnn", "resnet18", "resnet18_kd", "mobilenetv3s", "efficientnetb0",
-                         "convnextt", "ASF_A2fix_ent", "asf_kd", "CMP_C2")],
+                         "convnextt", "ASF_A2fix_ent", "asf_kd", "CMP_C2", "cmp_exp_ce", "cmp_exp_kd")],
       W)
 P("Diễn giải bằng điểm phần trăm (tính từ số chưa làm tròn): ResNet18-KD 96.02% accuracy, cao hơn ResNet18-CE "
   "0.65 điểm phần trăm (paired 3/3 seed dương); ASF-KD 95.91%, cao hơn ASF-CE 0.71 điểm phần trăm (3/3 seed "
-  "dương). ASF-KD so ResNet18-KD: thấp hơn 0.10 điểm phần trăm — dưới KD, hai kiến trúc gần như ngang nhau. "
-  "Cả hai mô hình đề xuất ở mọi phiên bản đều vượt B2 MobileNetV3-S; ASF-CE/KD và ResNet18-CE/KD không vượt "
-  "B3/B4; B4 ConvNeXt-T là mô hình có kết quả cao nhất trong các thí nghiệm.")
+  "dương). Sau khi sửa κ = exp(θ) ở v4, CMP-exp-CE đạt 95.49% acc / 95.48% F1 — vượt CMP-CE v1 (+0.39 điểm, "
+  "3/3 seed) và vượt backbone gốc B1 ResNet18-CE (+0.11 điểm test, 2/3 seed; +0.40 điểm val, 3/3 seed) với "
+  "latency đo cùng máy tương đương (3.69 ms vs 4.11 ms). CMP-exp-KD đạt 95.74% ± 0.05% (thắng CMP-exp-CE 3/3 "
+  "seed, độ ổn định cao nhất nhóm KD). Tất cả mô hình đề xuất vượt B2 MobileNetV3-S; B4 ConvNeXt-T vẫn là trần.")
 figure("fig_val_f1_final.png", "Hình 4. Val macro-F1 (mean ± std, 3 seeds).", 15.0)
 figure("fig_test_f1_latency.png", "Hình 5. Test macro-F1 theo latency batch-1 (median).", 13.5)
 
@@ -282,10 +282,12 @@ P("ASF (screening 8 epoch, seed 0): fixed fusion 0.9469 / adaptive gate 0.9456 (
   "diagnostics: max_mean = 1.0, std = 0) / energy descriptor 0.9464 (vượt control fixed cùng recipe +0.39%) / "
   "A2fix-ent 0.9472 (entropy reg giữ gate sống: max_mean 0.16). Kết luận: entropy reg là nhân tố sống còn của "
   "nhánh gate; energy descriptor có căn cứ (signed-GAP subband nhỏ 19× so LL4) nhưng không vượt GAP gate.")
-P("CMP (screening 8 epoch, seed 0): C1 cosine K=1 0.9422 / C2 K=2 0.9441 / C3 margin 0.3 0.9404 / C2fix "
+P("CMP (screening 8 epoch, seed 0 + v4 sửa κ): C1 cosine K=1 0.9422 / C2 K=2 0.9441 / C3 margin 0.3 0.9404 / C2fix "
   "(k-means + diversity) 0.9398 / C3fix 0.9413 / CMP-P hard-max 0.9394 / CMP-PG pair loss 0.9416. "
-  "Diagnostics: prototype collapse thực (45/45 lớp pair-cos 1.00000000); hard-max phá collapse (0.73) nhưng "
-  "F1 không tăng; margin v1 sai chiều (D1: giảm CE mẫu khó −0.11, giảm gradient lớp khó).")
+  "V3b kappa check phát hiện logit_scale quên .exp() (κ bị chặn ≤ 4.605 → trần softmax 13.32% dưới KD). "
+  "V4 sửa κ = exp(θ) ∈ [10, 64] (CMP-exp, 15 epoch s0): CMP-exp-CE đạt 0.9542 (+0.59% vs B1 s0) và CMP-exp-KD "
+  "đạt 0.9561 (KD loss giảm từ 15.21 về 0.51 thay vì kẹt 18.46). ASF-Lite (v4 screening s0) đạt 0.9504 CE / "
+  "0.9555 KD nhưng latency 4.07–4.28 ms (chậm hơn ASF v1) nên dừng ở vòng screening.")
 figure("fig_gate_mean.png", "Hình 6. Phân bố gate ASF theo thành phần — 3 seeds (entropy reg).", 13.5)
 P("KD dừng đúng một lần tinh chỉnh: cấu hình T=4, α=0.5 cho tín hiệu ngay từ screening; không mở grid tìm "
   "kiếm thêm theo phạm vi cho phép.")
@@ -352,13 +354,12 @@ for t in (
 
 # ================= 16 KET LUAN =================
 H1("15. Kết luận")
-P("Trong phạm vi thí nghiệm trên NWPU-RESISC45: ASF với entropy regularizer cải thiện validation một cách "
-  "nhất quán so với backbone gốc nhưng lợi ích không khái quát sang test; CMP multi-prototype không vượt "
-  "backbone gốc dù đã sửa các vấn đề cơ học được chẩn đoán; knowledge distillation từ ConvNeXt-T là cải "
-  "thiện hiệu quả và nhất quán nhất — ResNet18-KD đạt 96.02% accuracy test (+0.65 điểm phần trăm, 3/3 seed) "
-  "và ASF-KD đạt 95.91% (+0.70 điểm phần trăm, 3/3 seed), cả hai đều vượt B1-CE, B2 và tiệm cận "
-  "EfficientNet-B0 với chi phí thấp hơn. Toàn bộ kết quả âm tính được giữ trong lịch sử thực nghiệm kèm phân "
-  "tích cơ học, và mọi kết luận được giới hạn trong phạm vi dữ liệu và protocol đã thực hiện.")
+P("Trong phạm vi thí nghiệm trên NWPU-RESISC45: (1) ASF với entropy regularizer cải thiện validation nhất quán "
+  "nhưng lợi ích chưa khái quát sang test; (2) chẩn đoán định lượng đã tìm ra và sửa lỗi tham số hóa κ = exp(θ) "
+  "của CMP (CMP-exp-CE đạt 95.48% F1 test 3-seed, vượt cả CMP v1 lẫn backbone gốc B1 95.37%; CMP-exp-KD đạt "
+  "95.74% ± 0.05%); (3) knowledge distillation từ ConvNeXt-T mang cải thiện tổng thể cao nhất — ResNet18-KD "
+  "đạt 96.02% accuracy test (+0.65 điểm phần trăm, 3/3 seed) và ASF-KD đạt 95.91% (+0.70 điểm phần trăm, 3/3 seed). "
+  "Toàn bộ kết quả âm tính và quá trình sửa lỗi được lưu vết đầy đủ trong lịch sử thực nghiệm.")
 
 # ================= 17 PHAN CONG =================
 H1("16. Phân công thực tế")
