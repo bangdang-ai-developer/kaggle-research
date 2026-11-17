@@ -1,18 +1,18 @@
 # Results Summary — số liệu chính thức (đã verify từ artifacts)
 
-## V4 (Hướng A, 2026-11-16..17) — Sửa `κ = exp(θ)` cho CMP (`CMP-exp`)
+## V4 (Hướng A, 2026-11-16..17) — Cấu hình `CMP-exp` (khắc phục trần softmax & vượt B1)
 
-**Thiết lập:** Kế hoạch khóa [final_plan_v4_cmp_exp.json](final_plan_v4_cmp_exp.json); sửa `CMPResNet18` sang `cmp_scale_mode="exp"` (`κ = exp(θ) ∈ [10, 64]`) + `hardmax` + `k-means init`. Seed 0 từ `120-h1a-screen`, seeds 1–2 và test eval từ `121-cmp-exp-final-eval`. `ASF-Lite` (`0.9504` CE / `0.9555` KD, latency `4.07–4.28 ms`) dừng ở screening.
+**Thiết lập:** Kế hoạch khóa [final_plan_v4_cmp_exp.json](final_plan_v4_cmp_exp.json); cấu hình V4 (`cmp_scale_mode="exp"`, `κ = exp(θ)` khởi tạo `10.0` và chặn trên `64.0`, kết hợp `hardmax` + `k-means init`). Seed 0 từ `120-h1a-screen`, seeds 1–2 và test eval từ `121-cmp-exp-final-eval`. `ASF-Lite` (`0.9504` CE / `0.9555` KD val s0, latency `4.07–4.28 ms`) dừng ở screening. Mức tăng so với `CMP v1` là kết quả của **gói cấu hình V4** (scale mũ + hard-max + k-means init).
 
-| Model | Val F1 (3-seed) | TEST Acc (3-seed) | TEST F1 (3-seed) | Latency ms (cùng máy 121) |
-|---|---|---|---|---|
-| **CMP-exp-CE** | **0.9544 ± 0.0010** | **0.9549 ± 0.0022** | **0.9548 ± 0.0021** | **3.69 ± 0.02** *(RN18: 4.11)* |
-| **CMP-exp-KD** | **0.9557 ± 0.0005** | **0.9573 ± 0.0005** | **0.9574 ± 0.0005** | **3.71 ± 0.00** *(RN18: 4.11)* |
+| Model | Val Macro-F1 (3-seed) | TEST Acc (3-seed) | TEST Macro-F1 (3-seed) | Latency ms (cùng máy 121) | Train h (+k-means) |
+|---|---|---|---|---|---|
+| **CMP-exp-CE** | **0.9544 ± 0.0010** | **0.9549 ± 0.0022** | **0.9548 ± 0.0021** | **3.69 ± 0.02** *(RN18: 4.11)* | 0.198h *(+0.012h km)* |
+| **CMP-exp-KD** | **0.9557 ± 0.0005** | **0.9573 ± 0.0005** | **0.9574 ± 0.0005** | **3.71 ± 0.00** *(RN18: 4.11)* | 0.390h *(+0.012h km)* |
 
-**Paired theo seed `{0, 1, 2}` trên TEST F1:**
-- `CMP-exp-CE − CMP-CE v1`: `[+0.67%, +0.11%, +0.38%]` → mean **+0.39% (3/3 dương)**.
+**Paired theo seed `{0, 1, 2}` trên TEST macro-F1 (tính từ số chưa làm tròn):**
+- `CMP-exp-CE − CMP-CE (v1)`: `[+0.67%, +0.11%, +0.38%]` → mean **+0.39% (3/3 dương)**.
 - `CMP-exp-CE − B1 ResNet18-CE`: `[+0.42%, −0.34%, +0.26%]` → mean **+0.11% (2/3 dương)** *(Val: +0.40%, 3/3 dương)*.
-- `CMP-exp-KD − CMP-exp-CE`: `[+0.16%, +0.48%, +0.13%]` → mean **+0.26% (3/3 dương)**, `KD loss 15.21 → 0.508` (hết kẹt `18.46` ở v3).
+- `CMP-exp-KD − CMP-exp-CE`: `[+0.16%, +0.48%, +0.13%]` → mean **+0.26% (3/3 dương)**; ở **validation seed 0**, `CMP-exp-KD` tăng **`94.48% → 95.61%`** (`KD loss 15.21 → 0.508` so với `CMP-KD` cũ kẹt `18.46` ở `κ = 3.823`).
 
 ---
 

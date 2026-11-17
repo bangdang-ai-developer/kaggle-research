@@ -39,7 +39,7 @@
 8. (v4 audit) Cột per-seed test trong bản nghiên cứu chi tiết viết tay sai (không khớp mean±std/paired diffs từ artifacts) — đã sửa lấy trực tiếp từ `test_3seed_report.json`; mean±std và paired diffs giữ nguyên (đúng).
 9. (v4 audit) layer4 ResNet18 với input 256 là 8×8 (không phải 16×16 như chú thích cũ) — chỉ sai chú thích, logic code đúng; đã sửa docs + sơ đồ.
 10. (v4 audit) Thống kê signed-GAP đo TRƯỚC projection trên subband thô — chưa đo tín hiệu sau proj/ReLU tại head; diễn cảm đã soften thành "gợi ý khảo sát energy descriptor".
-11. (v4 audit) KD chạy đủ 15 epoch (không early-stop), train time thật ~0.39h/run vs CE early-stop ~0.20h/run — chênh lệch thời gian huấn luyện được ghi rõ trong diễn giải KD.
+11. (v4 audit) Toàn bộ các run CE và KD ở cả 3 seed đều chạy đủ 15 epoch (`executed_epochs = 15` trong reports `060a/b`, `110b/111`, `120/121`); chênh lệch thời gian huấn luyện ~`2×` (`0.384–0.398h` vs `0.197–0.209h`) hoàn toàn do forward pass online của teacher ConvNeXt-T, không phải do CE dừng sớm. Thời gian `init_prototypes_kmeans` (`~42–45s` = `0.012h/run`) của `CMP-exp` tách riêng khỏi `train_model`.
 
 ## 3. Về protocol và dữ liệu
 

@@ -1,6 +1,6 @@
 {
  "checks": {
-  "B1-CE s2": {
+  "B1 ResNet18-CE s2": {
    "top3": [
     [
      "airplane",
@@ -15,7 +15,46 @@
      0.0
     ]
    ],
-   "latency_ms": 10.5,
+   "model_only_ms": 16.3,
+   "app_e2e_ms": 33.1,
+   "probs_sum": 1.0
+  },
+  "B1 ResNet18-KD s0": {
+   "top3": [
+    [
+     "airplane",
+     1.0
+    ],
+    [
+     "airport",
+     0.0
+    ],
+    [
+     "harbor",
+     0.0
+    ]
+   ],
+   "model_only_ms": 11.6,
+   "app_e2e_ms": 12.0,
+   "probs_sum": 1.0
+  },
+  "ASF-CE s1": {
+   "top3": [
+    [
+     "airplane",
+     1.0
+    ],
+    [
+     "storage_tank",
+     0.0
+    ],
+    [
+     "harbor",
+     0.0
+    ]
+   ],
+   "model_only_ms": 11.4,
+   "app_e2e_ms": 12.0,
    "probs_sum": 1.0
   },
   "ASF-KD s1": {
@@ -33,7 +72,27 @@
      0.0
     ]
    ],
-   "latency_ms": 10.7,
+   "model_only_ms": 11.7,
+   "app_e2e_ms": 12.2,
+   "probs_sum": 1.0
+  },
+  "CMP-CE v1 s1": {
+   "top3": [
+    [
+     "airplane",
+     0.5151
+    ],
+    [
+     "railway",
+     0.0125
+    ],
+    [
+     "runway",
+     0.0124
+    ]
+   ],
+   "model_only_ms": 11.3,
+   "app_e2e_ms": 11.8,
    "probs_sum": 1.0
   },
   "CMP-exp-CE s1": {
@@ -51,7 +110,8 @@
      0.0
     ]
    ],
-   "latency_ms": 10.3,
+   "model_only_ms": 15.0,
+   "app_e2e_ms": 15.5,
    "probs_sum": 1.0
   },
   "CMP-exp-KD s0": {
@@ -69,10 +129,14 @@
      0.0
     ]
    ],
-   "latency_ms": 10.0,
+   "model_only_ms": 10.1,
+   "app_e2e_ms": 10.4,
    "probs_sum": 1.0
   }
  },
+ "n_models_checked": 7,
+ "device": "cpu",
+ "timing_scope": "model_only_ms: forward pass after load + 3 warm-up runs; app_e2e_ms: preprocess+forward+postprocess (excludes file transfer)",
  "pass": true,
- "sample": "/Users/bangdang/Project/kaggle-research/data/raw/punfake---resisc45/NWPU-RESISC45/airplane/airplane_001.jpg"
+ "sample": "data/raw/punfake---resisc45/NWPU-RESISC45/airplane/airplane_001.jpg"
 }

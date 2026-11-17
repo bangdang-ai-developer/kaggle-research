@@ -16,27 +16,25 @@ Phân loại 45 cảnh ảnh viễn thám trên bộ NWPU-RESISC45 — bài toá
 
 **ASF (Adaptive Scale–Frequency ResNet18):** giữ nguyên backbone; tách Haar wavelet mức 1 trên feature maps layer2 (128ch, 32×32) và layer4 (512ch, 8×8) tạo 8 thành phần (mỗi stage: nhánh ORIG — feature map gốc không qua DWT + 3 subband LH/HL/HH); mỗi thành phần qua 1×1 conv → BN → ReLU → GAP cho vector f_i (128-d); gate softmax theo từng ảnh (MLP 1024→8) tổng hợp Σ w_i·f_i; hợp nhất residual qua Linear khởi tạo nhỏ (std 1e-3) cộng vào đặc trưng GAP(layer4) trước head 45 lớp. Entropy regularizer λ·(log 8 − H(w))/log 8, λ = 0.05 giữ gate khỏi sụp 1-hot.
 
-**CMP (Confusion-guided Multi-Prototype ResNet18):** GAP → embedding Linear 512-d → L2 normalize; K prototype/lớp (L2 normalize); v1 logits = logsumexp(κ·cos(e, p_k)) − log K; v2 logits = κ·max_k(cos) (hard-max theo Sub-center ArcFace); κ = clamp(θ, max = ln 100) — θ học trực tiếp (không qua exp), khởi tạo θ = ln 10 ≈ 2.303. Confusion graph xây chỉ từ train (probe model 90/10, 6 epoch) cho margin/pair-loss có hướng.
+**CMP-exp (V4 — cấu hình chính bảng kết quả):** GAP → embedding Linear 512-d → L2 normalize; `K = 2` prototype/lớp khởi tạo bằng k-means trên tập train; `hard-max` cosine similarity; scale mũ `κ = exp(θ)` khởi tạo ở `10.0` (`θ = ln 10`) và chặn trên tại `64.0`. Các thành phần confusion graph (xây train-only 90/10, 6 epoch), margin và pair loss được khảo sát trong phần ablation (`C3`/`CMP-PG`) và không dùng trong V4 chính.
 
 ### 1.3. Bốn vòng nghiên cứu
-- **V1:** audit dữ liệu + protocol chống rò rỉ + final 7 mô hình (5 baseline + 2 proposed) × 3 seed + test + robustness.
-- **V2:** chẩn đoán bằng số trên checkpoint thật (5 hiện tượng), 4 candidate sửa lỗi cơ học, mở rộng đánh giá test đủ 3 seed × 7 mô hình.
-- **V3:** knowledge distillation từ ConvNeXt-T cho 3 student, final 2 mô hình KD × seeds 1–2, test eval 3-seed.
-- **V4 (Hướng A):** sửa lỗi quên `.exp()` trên `logit_scale` của CMP (`CMP-exp`, `κ = exp(θ) ∈ [10, 64]`), thử nghiệm `ASF-Lite` ở screening, và đánh giá `CMP-exp-CE`/`CMP-exp-KD` đủ 3 seed + TEST.
+- **V1:** audit dữ liệu + protocol chống rò rỉ + final 7 mô hình (5 baseline + 2 proposed) × 3 seed + test + robustness (1 checkpoint best-val/model).
+- **V2:** chẩn đoán bằng số trên checkpoint thật, 4 candidate sửa lỗi cơ học, mở rộng đánh giá test đủ 3 seed × 7 mô hình (phát hiện selection effect).
+- **V3:** nghiên cứu mở rộng Knowledge Distillation từ ConvNeXt-T cho 3 student, final 2 mô hình KD × seeds 1–2, test eval 3-seed.
+- **V4 (Hướng A):** cấu hình `CMP-exp` (`κ = exp(θ) ∈ [10, 64]` + `hardmax` + `k-means init`), screening `ASF-Lite` (dừng), và đánh giá `CMP-exp-CE`/`CMP-exp-KD` đủ 3 seed + TEST.
 
 ### 1.4. Đóng góp chính (kết quả cuối cùng trên TEST, 3 seeds)
-1. **ResNet18-KD đạt 96.02% accuracy / 96.01% F1 macro** — paired vs ResNet18-CE **+0.65 điểm phần trăm F1, 3/3 seed dương** — mô hình nhỏ tốt nhất, gần EfficientNet-B0 (96.07) với latency bằng khoảng 1/3.
-2. **ASF-KD đạt 95.91% / 95.91%** — paired vs ASF-CE **+0.70 điểm, 3/3 seed dương**.
-3. **CMP-exp (V4) khắc phục lỗi tham số hóa gốc và vượt backbone ở chế độ CE:** sửa `κ = exp(θ)` đưa **`CMP-exp-CE` đạt 95.49% acc / 95.48% F1** (vượt `CMP v1` `+0.39` điểm 3/3 seed và vượt `B1 ResNet18-CE` `+0.11` điểm test / `+0.40` điểm val 3/3 seed) và đưa **`CMP-exp-KD` từ kẹt `0.9448` lên `95.73% / 95.74% ± 0.05%`**.
-4. **ASF cải thiện validation nhất quán** so với backbone (+0.39 điểm, 3/3 seed) nhưng lợi ích không khái quát sang test (mục 3.3) — kết luận được điều chỉnh minh bạch sau đánh giá mở rộng.
-5. Quy trình chẩn đoán bằng số trên checkpoint (thay vì suy đoán từ tên biến/loss curve) phát hiện đúng các lỗi cơ học (`gate collapse`, `margin` ngược chiều, `κ`-cap) để sửa dứt điểm ở V4.
+1. **Hai mô hình tự chế ở chế độ CE chuẩn đáp ứng yêu cầu vượt baseline:** **`ASF-CE` (95.20% Acc / 95.20% macro-F1)** vượt `B2 MobileNetV3-S` (`94.69%`) `+0.51` điểm phần trăm (chưa vượt `B1 ResNet18-CE` `95.37%` trên test, dù thắng `3/3` seed trên validation `+0.39` điểm); **`CMP-exp-CE` (95.49% Acc / 95.48% macro-F1)** vượt `B2` `+0.79` điểm, vượt `CMP-CE (v1)` `+0.39` điểm (`3/3` seed) và vượt nhẹ `B1` trung bình `+0.11` điểm (dương ở `2/3` seed).
+2. **Mở rộng Knowledge Distillation (v3/v4):** `ResNet18-KD` (đối chứng KD trên backbone chuẩn) đạt **96.02% Acc / 96.01% macro-F1** (`+0.65` điểm F1 vs `B1`, `3/3` seed); `ASF-KD` đạt **95.91% Acc / 95.91% macro-F1** (`+0.70` điểm F1 vs `ASF-CE`, `3/3` seed); `CMP-exp-KD` đạt **95.73% Acc / 95.74% macro-F1** (`+0.26` điểm F1 vs `CMP-exp-CE`, `3/3` seed, và tăng `94.48% → 95.61%` trên **validation seed 0** so với `CMP-KD` cũ).
+3. Quy trình chẩn đoán bằng số trên checkpoint phát hiện đúng các lỗi cơ học (`gate collapse`, `margin` ngược chiều, `κ`-cap ở `CMP-KD` cũ với `κ = 3.823` tạo trần softmax `13.32%` ở `T = 4`) để sửa dứt điểm ở V4.
 
 ---
 
 ## 2. Dataset và protocol
 
 ### 2.1. Audit dữ liệu
-Nguồn Kaggle `punfake/resisc45`. Kiểm toàn bộ 31.500 ảnh: 0 lỗi decode, 100% 256×256 RGB, đủ 45 lớp × 700. Trùng lặp: 8 nhóm trùng tuyệt đối (MD5 identical) và 39 cặp gần trùng dHash (Hamming ≤ 6), trong đó 16 cặp mutual nearest-neighbor; 4 nhóm chéo lớp được co-split để loại rò rỉ (kiểm tra pixel: chỉ tương tự cấu trúc — MSE 0.02–0.07 — không phải trùng thật).
+Nguồn Kaggle `punfake/resisc45`. Kiểm toàn bộ 31.500 ảnh (`010-data-audit`): 0 lỗi decode, 100% 256×256 RGB, đủ 45 lớp × 700 ảnh. Trùng lặp (`audit_report.json`, `near_dup_pairs.csv`): **8 nhóm trùng tuyệt đối** (16 file MD5 identical, cùng lớp) và **20 cặp gần trùng dHash** (Hamming ≤ 6: 13 cùng lớp / 7 khác lớp), trong đó **16 cặp là mutual nearest-neighbor** (12 cùng lớp / 4 khác lớp) được gộp vào nhóm; 4 nhóm chéo lớp được co-split để loại rò rỉ (kiểm tra pixel cho thấy chỉ tương tự cấu trúc — MSE 0.02–0.07 — không phải trùng thật).
 
 ### 2.2. Split
 75/10/15 phân tầng, seed 42, chia theo nhóm trùng: **train 23.626 / val 3.149 / test 4.725**; per-class 524–526 / 69–70 / 104–107. Manifest SHA256 `cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a` — không chia lại ở bất kỳ vòng nào.
@@ -95,7 +93,7 @@ Test chỉ đánh giá khi kế hoạch khóa (`final_plan*.json`); checkpoint c
 | B3 (seed 0) | 0.9602 | 0.9458 | 0.6214 | 0.9416 | 0.9494 | 0.9494 | 0.9505 |
 | B4 (seed 2) | 0.9678 | 0.9608 | 0.8732 | 0.9568 | 0.9644 | 0.9657 | 0.9628 |
 
-ASF ≥ B1 tuyệt đối 6/6 corruption (theo delta 5/6); ConvNeXt-T bền nhất; EfficientNet-B0 giảm mạnh nhất ở blur σ2 (−33.9 điểm phần trăm — nguyên nhân chưa có thí nghiệm chứng minh, chỉ quan sát).
+`ASF-CE` (seed 2) có accuracy tuyệt đối cao hơn `B1` (seed 2) ở **6/6** corruption, và mức giảm accuracy (`Δ vs clean`) nhỏ hơn ở **5/6** corruption (trừ `JPEG q30`: `-1.90` điểm vs `-1.84` điểm của `B1`); ConvNeXt-T bền nhất; EfficientNet-B0 giảm mạnh nhất ở blur σ2 (`-33.88` điểm phần trăm — nguyên nhân chưa có thí nghiệm chứng minh).
 
 ---
 
@@ -193,59 +191,59 @@ Gate ASF-KD phân hóa mạnh dưới KD (max_mean 0.46; std LL4 0.26) — khác
 
 ## 6b. Vòng V4 (Hướng A) — Sửa lỗi `κ = exp(θ)` cho CMP & Screening ASF-Lite
 
-### 6b.1. Phát hiện lỗi tham số hóa gốc và Screening (kernel `120`, seed 0, 15 epoch)
-Trong `src/models.py` gốc, `logit_scale` được khởi tạo `math.log(10.0)` (ý đồ `exp(ln 10) = 10`) nhưng lại thiếu `.exp()` khi tính `kappa = logit_scale.clamp(max=ln 100)`, khiến `κ` bị khóa `≤ 4.605` (tạo trần softmax `13.32%` dưới KD như §6.4 đã chứng minh). Vòng v4 thử nghiệm hai cải tiến ở seed 0:
+### 6b.1. Cấu hình V4 và Screening (kernel `120`, seed 0, 15 epoch)
+Trong `src/models.py`, `logit_scale` khởi tạo `math.log(10.0)` nhưng bản v1–v3 thiếu `.exp()` khi tính `kappa = logit_scale.clamp(max=ln 100)`, khiến `κ` bị khóa `≤ 4.605` (ở checkpoint `CMP-KD` v3 cũ có `κ = 3.823`, tạo trần softmax `13.32%` tại `T = 4` như §6.4 đã chứng minh). Vòng v4 sử dụng gói cấu hình mới (`κ = exp(θ)` khởi tạo `10.0`, chặn trên `64.0`, kết hợp `hardmax` + `k-means init` — viết gọn là `CMP-exp`) cùng một biến thể đối chứng `ASF-Lite` ở seed 0:
 
-| Cấu hình | Val Acc | Val F1 | Δ vs ResNet18 s0 | Latency T4 (ms) | Ghi chú |
+| Cấu hình | Val Acc (s0) | Val Macro-F1 (s0) | Δ F1 vs ResNet18 s0 | Latency T4 (ms) | Ghi chú |
 |---|---|---|---|---|---|
-| `cmp_exp_ce` (`κ = exp(θ)`, hardmax, k-means) | **0.9543** | **0.9542** | **+0.59%** (`0.9483` → `0.9542`) | 3.77 | `κ = 14.26`, `inter-cos = 0.553` (không collapse) |
-| `cmp_exp_kd` (như trên + KD `T=4, α=0.5`) | **0.9562** | **0.9561** | **+0.11%** (`0.9550` → `0.9561`) | 3.77 | `κ = 19.38`, `KD loss: 15.21 → 0.508` (hết kẹt `18.46`) |
-| `asf_lite_ce` (`layer2+layer3` DWT, RMS, no conv) | 0.9505 | 0.9504 | +0.21% | 4.07 | Dừng ở screening (chậm hơn ASF v1) |
+| `cmp_exp_ce` (cấu hình V4 CE) | **0.9543** | **0.9542** | **+0.59%** (`0.9483` → `0.9542`) | 3.77 | `κ = 14.26`, `inter-cos = 0.553` (không collapse) |
+| `cmp_exp_kd` (cấu hình V4 + KD) | **0.9562** | **0.9561** | **+0.11%** (`0.9550` → `0.9561`) | 3.77 | `κ = 19.38`, `KD loss: 15.21 → 0.508` (vs `CMP-KD` cũ `0.9448` / `18.46` trên val s0) |
+| `asf_lite_ce` (`layer2+layer3` DWT, RMS) | 0.9505 | 0.9504 | +0.21% | 4.07 | Dừng ở screening (chậm hơn ASF v1) |
 | `asf_lite_kd` (như trên + KD) | 0.9555 | 0.9555 | +0.05% | 4.28 | Thấp hơn ASF v1 KD (`0.9565`) |
 
-Theo kế hoạch khóa [final_plan_v4_cmp_exp.json](../notes/final_plan_v4_cmp_exp.json), `asf_lite` dừng ở screening; `cmp_exp_ce` và `cmp_exp_kd` được đẩy lên đủ 3 seeds + đánh giá TEST (kernel `121`).
+Theo kế hoạch khóa [final_plan_v4_cmp_exp.json](../notes/final_plan_v4_cmp_exp.json), `asf_lite` dừng ở screening; `cmp_exp_ce` và `cmp_exp_kd` được đẩy lên đủ 3 seeds + đánh giá TEST (kernel `121`). Mức tăng của `CMP-exp` so với `CMP v1` (`CMP_C2`) là kết quả tổng hợp của **gói cấu hình V4** (scale mũ `κ = exp(θ)` + `hardmax` + `k-means init`), không quy riêng cho từng thành phần.
 
 ### 6b.2. Kết quả 3-seed Validation và TEST của `CMP-exp` (kernel `120` + `121`)
 
-| Mô hình | Val F1 (3-seed) | Test Acc (3-seed) | Test F1 (3-seed) | Latency (ms, cùng máy) | Train h/run |
+| Mô hình | Val F1 (3-seed) | Test Acc (3-seed) | Test Macro-F1 (3-seed) | Latency (ms, cùng máy 121) | Train h/run (+k-means) |
 |---|---|---|---|---|---|
-| `CMP-exp-CE` | **0.9544 ± 0.0010** | **0.9549 ± 0.0022** | **0.9548 ± 0.0021** | **3.69 ± 0.02** *(RN18 cùng máy: 4.11)* | 0.198 |
-| `CMP-exp-KD` | **0.9557 ± 0.0005** | **0.9573 ± 0.0005** | **0.9574 ± 0.0005** | **3.71 ± 0.00** *(RN18 cùng máy: 4.11)* | 0.390 |
+| `CMP-exp-CE` | **0.9544 ± 0.0010** | **0.9549 ± 0.0022** | **0.9548 ± 0.0021** | **3.69 ± 0.02** *(RN18 cùng máy: 4.11)* | 0.198h *(`+44.7s` = 0.012h k-means → tổng 0.210h)* |
+| `CMP-exp-KD` | **0.9557 ± 0.0005** | **0.9573 ± 0.0005** | **0.9574 ± 0.0005** | **3.71 ± 0.00** *(RN18 cùng máy: 4.11)* | 0.390h *(`+42.0s` = 0.012h k-means → tổng 0.402h)* |
 
-**So sánh ghép cặp theo seed `{0, 1, 2}` trên TEST F1:**
-- `CMP-exp-CE − CMP-CE v1`: `[+0.67, +0.11, +0.38]` điểm phần trăm → mean **+0.39, 3/3 seed dương**.
+**So sánh ghép cặp theo seed `{0, 1, 2}` trên TEST macro-F1 (tính từ số chưa làm tròn):**
+- `CMP-exp-CE − CMP-CE (v1)`: `[+0.67, +0.11, +0.38]` điểm phần trăm → mean **+0.39, 3/3 seed dương**.
 - `CMP-exp-CE − B1 ResNet18-CE`: `[+0.42, −0.34, +0.26]` → mean **+0.11, 2/3 seed dương** *(trên Validation thắng **3/3 seed**, mean **+0.40**, std `0.0010` bằng nửa B1)*. Đây là cấu hình CE tự chế đầu tiên vượt `B1 ResNet18-CE` trên cả 3-seed Val lẫn 3-seed Test.
-- `CMP-exp-KD − CMP-exp-CE`: `[+0.16, +0.48, +0.13]` → mean **+0.26, 3/3 seed dương**, độ ổn định giữa các seed cao nhất nhóm KD (`std = 0.0005`), nhưng vẫn thấp hơn `ResNet18-KD` (`0.9601`) trên test.
+- `CMP-exp-KD − CMP-exp-CE`: `[+0.16, +0.48, +0.13]` → mean **+0.26, 3/3 seed dương**, độ ổn định giữa các seed cao nhất nhóm KD (`std = 0.0005`), nhưng vẫn thấp hơn `ResNet18-KD` (`96.01%`) trên test.
 
 ---
 
 ## 7. Bảng TEST tổng hợp cuối (3 seeds — nguồn `deliverables/results_master.csv`)
 
-| Model | Params M | Acc % ± std | F1 % ± std | P macro % | R macro % | Latency ms | Train h |
+| Model | Params M | Acc % ± std | F1 % ± std | P macro % | R macro % | Latency ms (3-seed) | Train h (+k-means) |
 |---|---|---|---|---|---|---|---|
-| B0 SmallCNN | 0.29 | 59.46 ± 0.65 | 59.04 ± 0.64 | 60.64 | 59.46 | 2.52 | 0.34 |
-| B1 ResNet18-CE | 11.20 | 95.37 ± 0.19 | 95.37 ± 0.19 | 95.44 | 95.37 | 2.56 | 0.20 |
-| B2 MobileNetV3-S | 1.56 | 94.69 ± 0.15 | 94.69 ± 0.15 | 94.78 | 94.69 | 4.60 | 0.18 |
-| B3 EfficientNet-B0 | 4.07 | 96.08 ± 0.15 | 96.07 ± 0.15 | 96.12 | 96.08 | 7.36 | 0.33 |
-| B4 ConvNeXt-T | 27.85 | 96.78 ± 0.02 | 96.77 ± 0.02 | 96.81 | 96.78 | 5.96 | 0.62 |
-| ASF-CE (v1) | 11.60 | 95.20 ± 0.26 | 95.20 ± 0.26 | 95.29 | 95.20 | 3.72 | 0.21 |
-| CMP-CE (v1) | 11.49 | 95.10 ± 0.12 | 95.09 ± 0.12 | 95.15 | 95.10 | 2.56 | 0.20 |
-| **CMP-exp-CE (v4)** | 11.49 | **95.49 ± 0.22** | **95.48 ± 0.21** | 95.54 | 95.48 | 3.69 *(cùng máy RN18: 4.11)* | 0.20 |
-| **ResNet18-KD (v3)** | 11.20 | **96.02 ± 0.20** | **96.01 ± 0.19** | 96.07 | 96.02 | 2.53 | 0.38 |
-| **ASF-KD (v3)** | 11.60 | **95.91 ± 0.14** | **95.91 ± 0.14** | 95.96 | 95.91 | 3.76 | 0.40 |
-| **CMP-exp-KD (v4)** | 11.49 | **95.73 ± 0.05** | **95.74 ± 0.05** | 95.79 | 95.73 | 3.71 *(cùng máy RN18: 4.11)* | 0.39 |
+| B0 SmallCNN | 0.29 | 59.46 ± 0.65 | 59.04 ± 0.64 | 60.64 | 59.46 | 1.54 *(071b)* | 0.344 |
+| B1 ResNet18-CE | 11.20 | 95.37 ± 0.19 | 95.37 ± 0.19 | 95.44 | 95.37 | 2.52 *(071b)* / 4.11 *(121)* | 0.200 |
+| B2 MobileNetV3-S | 1.56 | 94.69 ± 0.15 | 94.69 ± 0.15 | 94.78 | 94.69 | 4.91 *(071b)* | 0.180 |
+| B3 EfficientNet-B0 | 4.07 | 96.08 ± 0.15 | 96.07 ± 0.15 | 96.12 | 96.08 | 7.40 *(071b)* | 0.331 |
+| B4 ConvNeXt-T | 27.85 | 96.78 ± 0.02 | 96.77 ± 0.02 | 96.81 | 96.78 | 6.87 *(071b)* | 0.616 |
+| **ASF-CE** *(v1)* | 11.60 | 95.20 ± 0.26 | 95.20 ± 0.26 | 95.29 | 95.20 | 3.82 *(071b)* | 0.209 |
+| CMP-CE *(v1)* | 11.49 | 95.10 ± 0.12 | 95.09 ± 0.12 | 95.15 | 95.10 | 2.80 *(071b)* | 0.197 |
+| **CMP-exp-CE** *(v4)* | 11.49 | **95.49 ± 0.22** | **95.48 ± 0.21** | 95.54 | 95.48 | 3.69 *(121, RN18: 4.11)* | 0.198 *(+0.012 km)* |
+| **ResNet18-KD** *(v3)* | 11.20 | **96.02 ± 0.20** | **96.01 ± 0.19** | 96.07 | 96.02 | 2.53 *(112c)* | 0.384 |
+| **ASF-KD** *(v3)* | 11.60 | 95.91 ± 0.14 | 95.91 ± 0.14 | 95.96 | 95.91 | 3.76 *(112c)* | 0.398 |
+| **CMP-exp-KD** *(v4)* | 11.49 | 95.73 ± 0.05 | 95.74 ± 0.05 | 95.79 | 95.73 | 3.71 *(121, RN18: 4.11)* | 0.390 *(+0.012 km)* |
 
-Mọi giá trị `Acc`, `F1`, `P macro`, `R macro`, `Latency`, `Train h` đồng bộ trực tiếp với `deliverables/results_master.json` / `.csv`. Train h KD = wall time 15 epoch đầy đủ (không early-stop): RN18-KD ~1.385–1.394s, ASF-KD ~1.427–1.440s, CMP-exp-KD ~1.376–1.457s; CE counterpart early-stop sớm hơn nhẹ (RN18 ~710–725s, CMP-exp-CE ~705–731s).
+Mọi giá trị khớp trực tiếp với `deliverables/results_master.json` / `.csv`. **Phạm vi latency:** toàn bộ là trung bình của 3 giá trị median qua 3 seed (`Tesla T4 cuda`, `batch = 1`, `256×256`, `n_warmup = 10`, `n_iter = 50`); do bảng tổng hợp gộp từ 3 phiên đánh giá (`071b`, `112c`, `121`), khi so `CMP-exp` với `ResNet18` dùng phép đo đối chứng cùng máy ở `121` (`3.69–3.71 ms` vs `4.11 ms`). **Phạm vi thời gian huấn luyện:** toàn bộ các run CE và KD ở cả 3 seed đều có `executed_epochs = 15` (`060a/b`, `110b/111`, `120/121`); thời gian KD tăng ~`2×` (`~0.38–0.40h` vs `~0.20–0.21h`) là do teacher ConvNeXt-T forward online. Với `CMP-exp`, `train_model` chưa gồm bước `init_prototypes_kmeans` (`~44.7s` cho CE, `~42.0s` cho KD — cộng thêm `0.012h/run`).
 
 ---
 
 ## 8. Trả lời các câu hỏi nghiên cứu
 
-**RQ1 (ASF có cải thiện?):** Có trên validation — paired 3/3 seed (+0.39 điểm, p≈0.05). Trên test đủ seed: ASF-CE ≈ B1 (−0.16 điểm, 1/3 seed) — lợi ích không khái quát. Với KD, ASF-KD ≈ RN18-KD trên test (−0.10 điểm). `ASF-Lite` (v4 screening) không vượt `ASF v1 KD` và chậm hơn (4.07–4.28 ms) nên dừng. **Kết luận trung thực: cải thiện nhỏ, nhất quán trên validation; chưa khái quát sang test.**
+**RQ1 (ASF có cải thiện?):** Có trên validation — paired 3/3 seed (`+0.39` điểm F1, `p ≈ 0.05`). Trên test đủ seed: `ASF-CE` (`95.20%`) vượt `B2` (`94.69%`, `+0.51` điểm) nhưng chưa vượt `B1` (`95.37%`, `−0.16` điểm, `1/3` seed). Với KD, `ASF-KD` (`95.91%`) không vượt `ResNet18-KD` (`96.01%`). `ASF-Lite` (v4 screening) không vượt `ASF v1 KD` và chậm hơn (`4.07–4.28 ms`) nên dừng.
 
-**RQ2 (CMP có cải thiện?):** Ở v1–v2 (7 cấu hình cũ, quên `.exp()` trên `logit_scale`), CMP thua B1 (`0.9509` vs `0.9537`) và bị kẹt KD (`0.9448`). Sau khi sửa `κ = exp(θ)` ở v4 (`CMP-exp`: hardmax + k-means + `κ ∈ [10, 64]`), **`CMP-exp-CE` đạt 95.44% val (3/3 thắng B1) và 95.48% F1 test (vượt `CMP v1` +0.39 điểm 3/3 seed, vượt `B1` +0.11 điểm 2/3 seed)**; `CMP-exp-KD` hội tụ sạch (`KD loss 15.21 → 0.51`, đạt `95.74% ± 0.05%` test, vượt `CMP-exp-CE` 3/3 seed) nhưng vẫn thấp hơn `ResNet18-KD` (`96.01%`).
+**RQ2 (CMP có cải thiện?):** Ở v1–v2 (7 cấu hình cũ), `CMP-CE (v1)` (`95.09%`) thua `B1` (`95.37%`) và `CMP-KD` v3 cũ (`κ = 3.823`, trần softmax `13.32%` tại `T = 4`) kẹt ở `94.48%` val s0. Ở v4, gói cấu hình **`CMP-exp`** (`κ = exp(θ) ∈ [10, 64]` + `hardmax` + `k-means init`) đưa **`CMP-exp-CE` đạt 95.44% val (3/3 thắng B1) và 95.48% test macro-F1** — vượt `B2` `+0.79` điểm, vượt `CMP v1` `+0.39` điểm (`3/3` seed) và vượt nhẹ `B1` `+0.11` điểm (`2/3` seed); `CMP-exp-KD` tăng từ `94.48%` lên `95.61%` (val s0) và đạt `95.74% ± 0.05%` trên test (`3/3` seed thắng `CMP-exp-CE`), nhưng vẫn thấp hơn `ResNet18-KD` (`96.01%`).
 
-**RQ3 (chi phí — áp cho v3):** KD mang +0.65/+0.70 điểm test với chi phí training ~2× thời gian/epoch (teacher online; KD chạy đủ 15 epoch — 0.39h/run so CE early-stop 0.20h/run) và teacher training lịch sử 0.62h (ghi riêng, tái sử dụng checkpoint); inference latency không đổi, teacher không xuất hiện. ASF-KD so B1-CE: +0.54 điểm F1, +1.24 ms latency (+49%), +3.6% params.
+**RQ3 (chi phí):** Toàn bộ CE và KD đều chạy `15` epoch ở cả 3 seed. KD tăng thời gian train ~`2×` (`~100s` vs `~47–50s/epoch`) do teacher online; inference latency giữ nguyên (`2.53` vs `2.52 ms` với RN18). `CMP-exp-CE` chạy cùng tốc độ train `B1` (`0.198h` + `0.012h` k-means) và latency cùng máy tương đương (`3.69 ms` vs `4.11 ms`). `ASF-CE` thêm `+3.6%` params (`11.60M`) và `+52%` latency (`3.82 ms` vs `2.52 ms`).
 
 ---
 

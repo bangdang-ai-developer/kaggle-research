@@ -100,8 +100,8 @@ def corrupt(img: Image.Image, kind: str | None, param: Any) -> Image.Image:
 
 st.set_page_config(page_title="NWPU-RESISC45 Demo", layout="wide")
 st.title("Phân loại cảnh ảnh viễn thám — NWPU-RESISC45")
-st.caption("Models: ResNet18 baseline và 2 mô hình nhóm (ASF, CMP) — checkpoint final v1, seed best-val. "
-           "Chạy local, không gửi dữ liệu đi đâu.")
+st.caption("7 tùy chọn model (ResNet18-CE, ASF-CE, CMP-CE v1, CMP-exp-CE v4 và các bản KD mở rộng) — "
+           "checkpoint chọn theo validation. Chạy local offline, không gửi dữ liệu ra ngoài.")
 
 class_order = load_class_order()
 CLASSES = [c for c, i in sorted(class_order.items(), key=lambda kv: kv[1])]
@@ -122,32 +122,48 @@ if uploaded is not None:
 
     if st.button("Phân loại", type="primary"):
         model = load_model(sel_model)
+        # Preprocess phía ứng dụng (từ ảnh PIL đã nhận → tensor trên device)
+        t_pre0 = time.perf_counter()
         x = eval_augment(img_c, 256).unsqueeze(0).to(DEVICE)
-        # model-only latency (warmup + sync)
-        for _ in range(3):
-            model(x)
         if DEVICE == "cuda":
             torch.cuda.synchronize()
-        t0 = time.perf_counter()
+        pre_ms = (time.perf_counter() - t_pre0) * 1000
+
+        # Warm-up (không tính vào thời gian suy luận)
+        with torch.inference_mode():
+            for _ in range(3):
+                model(x)
+        if DEVICE == "cuda":
+            torch.cuda.synchronize()
+
+        # Model-only latency: chỉ đo forward pass sau khi model đã load và warm up
+        t_fwd0 = time.perf_counter()
         with torch.inference_mode():
             logits = model(x)
             if DEVICE == "cuda":
                 torch.cuda.synchronize()
-            model_ms = (time.perf_counter() - t0) * 1000
+        model_ms = (time.perf_counter() - t_fwd0) * 1000
+
+        # Postprocess phía ứng dụng (softmax + top-3)
+        t_post0 = time.perf_counter()
         probs = torch.softmax(logits.float(), dim=1)[0].cpu()
         top3 = torch.topk(probs, 3)
-        e2e_ms = (time.perf_counter() - t0) * 1000
+        post_ms = (time.perf_counter() - t_post0) * 1000
+        e2e_ms = pre_ms + model_ms + post_ms
 
         st.subheader(f"Top-3 dự đoán — {sel_model}")
         for prob, idx in zip(top3.values, top3.indices, strict=True):
             st.progress(float(prob), text=f"{CLASSES[int(idx)]} — {float(prob)*100:.2f}%")
-        st.info(f"Model-only latency: **{model_ms:.1f} ms** | end-to-end (gồm upload/preprocess/postprocess): "
-                f"**{e2e_ms:.1f} ms** | device: {DEVICE}")
+        st.info(
+            f"Model-only (forward sau load & warm-up): **{model_ms:.1f} ms** | "
+            f"End-to-end phía ứng dụng (preprocess → forward → postprocess, không gồm truyền file qua trình duyệt): "
+            f"**{e2e_ms:.1f} ms** | device: {DEVICE}"
+        )
         st.caption("Lưu ý: softmax score là xác suất dự đoán, chưa hiệu chuẩn (không phải confidence đã calibration). "
                    "Corruption là synthetic — minh họa, không chứng minh độ bền deployment.")
 else:
     st.info("Upload một ảnh để bắt đầu.")
 
 st.divider()
-st.caption("Checkpoint: outputs/ (kernel Kaggle 060a/060b) · Split manifest sha256 cc70020a… · "
-           "Demo mục 12/14 spec — không triển khai public.")
+st.caption("Checkpoints: outputs/ (kernels 060a/060b/110b/111/120/121) · Split manifest sha256 cc70020a… · "
+           "Demo offline — không triển khai public.")

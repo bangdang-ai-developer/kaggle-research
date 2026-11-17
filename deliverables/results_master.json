@@ -1,7 +1,8 @@
 {
  "models": {
   "smallcnn": {
-   "display": "B0 SmallCNN (from scratch)",
+   "display": "B0 SmallCNN",
+   "group": "baseline",
    "params_total_m": 0.29,
    "val_f1_3seed": {
     "mean": 0.5821,
@@ -12,6 +13,8 @@
     "std": 0.0046
    },
    "train_time_h_mean": 0.344,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.344,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -40,11 +43,14 @@
     "precision": 0.6077,
     "recall": 0.6009
    },
-   "latency_ms_bestvalseed": 2.5224159955978394,
+   "latency_ms_3seed_mean": 1.54,
+   "latency_ms_bestvalseed": 2.52,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "resnet18": {
    "display": "B1 ResNet18-CE",
+   "group": "baseline",
    "params_total_m": 11.2,
    "val_f1_3seed": {
     "mean": 0.9504,
@@ -55,6 +61,8 @@
     "std": 0.0021
    },
    "train_time_h_mean": 0.2,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.2,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -83,11 +91,14 @@
     "precision": 0.9538,
     "recall": 0.953
    },
-   "latency_ms_bestvalseed": 2.5557119846343994,
+   "latency_ms_3seed_mean": 2.52,
+   "latency_ms_bestvalseed": 2.56,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "mobilenetv3s": {
    "display": "B2 MobileNetV3-S",
+   "group": "baseline",
    "params_total_m": 1.56,
    "val_f1_3seed": {
     "mean": 0.9424,
@@ -98,6 +109,8 @@
     "std": 0.001
    },
    "train_time_h_mean": 0.18,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.18,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -126,11 +139,14 @@
     "precision": 0.9487,
     "recall": 0.9475
    },
-   "latency_ms_bestvalseed": 4.5987842082977295,
+   "latency_ms_3seed_mean": 4.91,
+   "latency_ms_bestvalseed": 4.6,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "efficientnetb0": {
    "display": "B3 EfficientNet-B0",
+   "group": "baseline",
    "params_total_m": 4.07,
    "val_f1_3seed": {
     "mean": 0.958,
@@ -141,6 +157,8 @@
     "std": 0.0005
    },
    "train_time_h_mean": 0.331,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.331,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -169,11 +187,14 @@
     "precision": 0.9605,
     "recall": 0.9602
    },
-   "latency_ms_bestvalseed": 7.355039834976196,
+   "latency_ms_3seed_mean": 7.4,
+   "latency_ms_bestvalseed": 7.36,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "convnextt": {
-   "display": "B4 ConvNeXt-T (teacher)",
+   "display": "B4 ConvNeXt-T",
+   "group": "baseline",
    "params_total_m": 27.85,
    "val_f1_3seed": {
     "mean": 0.9671,
@@ -184,6 +205,8 @@
     "std": 0.0019
    },
    "train_time_h_mean": 0.616,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.616,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -212,11 +235,14 @@
     "precision": 0.9682,
     "recall": 0.9678
    },
-   "latency_ms_bestvalseed": 5.964560031890869,
+   "latency_ms_3seed_mean": 6.87,
+   "latency_ms_bestvalseed": 5.96,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": true
   },
   "ASF_A2fix_ent": {
-   "display": "ASF-CE (proposed v1)",
+   "display": "ASF-CE",
+   "group": "proposed_ce",
    "params_total_m": 11.6,
    "val_f1_3seed": {
     "mean": 0.9543,
@@ -227,6 +253,8 @@
     "std": 0.0035
    },
    "train_time_h_mean": 0.209,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.209,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -255,11 +283,14 @@
     "precision": 0.9558,
     "recall": 0.9549
    },
-   "latency_ms_bestvalseed": 3.719375967979431,
+   "latency_ms_3seed_mean": 3.82,
+   "latency_ms_bestvalseed": 3.72,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "CMP_C2": {
-   "display": "CMP-CE (proposed v1)",
+   "display": "CMP-CE (v1)",
+   "group": "proposed_ce",
    "params_total_m": 11.49,
    "val_f1_3seed": {
     "mean": 0.9499,
@@ -270,6 +301,8 @@
     "std": 0.001
    },
    "train_time_h_mean": 0.197,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.197,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -298,11 +331,14 @@
     "precision": 0.9521,
     "recall": 0.9515
    },
-   "latency_ms_bestvalseed": 2.558127999305725,
+   "latency_ms_3seed_mean": 2.8,
+   "latency_ms_bestvalseed": 2.56,
+   "latency_source": "071b (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "is_teacher": false
   },
   "resnet18_kd": {
    "display": "ResNet18-KD",
+   "group": "kd_control",
    "params_total_m": 11.2,
    "val_f1_3seed": {
     "mean": 0.9552,
@@ -313,6 +349,8 @@
     "std": 0.0003
    },
    "train_time_h_mean": 0.384,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.384,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -335,6 +373,8 @@
     "std": 0.002
    },
    "latency_ms_3seed_mean": 2.53,
+   "latency_ms_bestvalseed": 2.58,
+   "latency_source": "112c (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "kd": {
     "alpha": 0.5,
     "T": 4.0,
@@ -346,11 +386,11 @@
     "f1": 0.9613,
     "precision": 0.9618,
     "recall": 0.9613
-   },
-   "latency_ms_bestvalseed": 2.582848072052002
+   }
   },
   "asf_kd": {
-   "display": "ASF-KD (proposed v1+KD)",
+   "display": "ASF-KD",
+   "group": "kd_extension",
    "params_total_m": 11.6,
    "val_f1_3seed": {
     "mean": 0.9576,
@@ -361,6 +401,8 @@
     "std": 0.0011
    },
    "train_time_h_mean": 0.398,
+   "kmeans_init_h_mean": 0.0,
+   "total_train_h_mean": 0.398,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -383,6 +425,8 @@
     "std": 0.0014
    },
    "latency_ms_3seed_mean": 3.76,
+   "latency_ms_bestvalseed": 3.82,
+   "latency_source": "112c (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50)",
    "kd": {
     "alpha": 0.5,
     "T": 4.0,
@@ -394,11 +438,11 @@
     "f1": 0.9574,
     "precision": 0.9579,
     "recall": 0.9575
-   },
-   "latency_ms_bestvalseed": 3.822719931602478
+   }
   },
   "cmp_exp_ce": {
-   "display": "CMP-exp-CE (proposed v4, κ=exp)",
+   "display": "CMP-exp-CE (v4)",
+   "group": "proposed_ce",
    "params_total_m": 11.49,
    "val_f1_3seed": {
     "mean": 0.9544,
@@ -409,6 +453,14 @@
     "std": 0.001
    },
    "train_time_h_mean": 0.198,
+   "kmeans_init_sec_per_seed": {
+    "0": 44.8,
+    "1": 48.1,
+    "2": 41.2
+   },
+   "kmeans_init_sec_mean": 44.7,
+   "kmeans_init_h_mean": 0.012,
+   "total_train_h_mean": 0.21,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -431,7 +483,9 @@
     "std": 0.0021
    },
    "latency_ms_3seed_mean": 3.69,
+   "latency_ms_bestvalseed": 3.7,
    "same_machine_resnet18_latency_ms": 4.11,
+   "latency_source": "121 (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50; RN18 cùng máy: 4.11 ms)",
    "kappa_mean": 14.26,
    "test_bestvalseed": {
     "seed": 1,
@@ -439,11 +493,11 @@
     "f1": 0.9524,
     "precision": 0.9531,
     "recall": 0.9524
-   },
-   "latency_ms_bestvalseed": 3.704848051071167
+   }
   },
   "cmp_exp_kd": {
-   "display": "CMP-exp-KD (proposed v4, κ=exp)",
+   "display": "CMP-exp-KD (v4)",
+   "group": "kd_extension",
    "params_total_m": 11.49,
    "val_f1_3seed": {
     "mean": 0.9557,
@@ -454,6 +508,14 @@
     "std": 0.0005
    },
    "train_time_h_mean": 0.39,
+   "kmeans_init_sec_per_seed": {
+    "0": 42.9,
+    "1": 41.4,
+    "2": 41.6
+   },
+   "kmeans_init_sec_mean": 42.0,
+   "kmeans_init_h_mean": 0.012,
+   "total_train_h_mean": 0.402,
    "executed_epochs": {
     "0": 15,
     "1": 15,
@@ -476,7 +538,9 @@
     "std": 0.0005
    },
    "latency_ms_3seed_mean": 3.71,
+   "latency_ms_bestvalseed": 3.71,
    "same_machine_resnet18_latency_ms": 4.11,
+   "latency_source": "121 (3-seed mean of medians, T4 cuda, batch=1, n_warmup=10, n_iter=50; RN18 cùng máy: 4.11 ms)",
    "kappa_mean": 19.38,
    "test_bestvalseed": {
     "seed": 0,
@@ -485,7 +549,6 @@
     "precision": 0.9584,
     "recall": 0.9579
    },
-   "latency_ms_bestvalseed": 3.70905601978302,
    "kd": {
     "alpha": 0.5,
     "T": 4.0,
@@ -493,8 +556,119 @@
    }
   }
  },
+ "paired_comparisons_test_f1": {
+  "asf_ce_vs_b2": {
+   "diffs_pct_points_per_seed": [
+    0.34,
+    0.5,
+    0.71
+   ],
+   "mean_diff_pct_points": 0.52,
+   "wins": "3/3"
+  },
+  "asf_ce_vs_b1": {
+   "diffs_pct_points_per_seed": [
+    -0.12,
+    -0.56,
+    0.19
+   ],
+   "mean_diff_pct_points": -0.16,
+   "wins": "1/3"
+  },
+  "cmp_v1_vs_b2": {
+   "diffs_pct_points_per_seed": [
+    0.21,
+    0.61,
+    0.4
+   ],
+   "mean_diff_pct_points": 0.41,
+   "wins": "3/3"
+  },
+  "cmp_v1_vs_b1": {
+   "diffs_pct_points_per_seed": [
+    -0.25,
+    -0.45,
+    -0.12
+   ],
+   "mean_diff_pct_points": -0.27,
+   "wins": "0/3"
+  },
+  "cmp_exp_ce_vs_b2": {
+   "diffs_pct_points_per_seed": [
+    0.88,
+    0.72,
+    0.78
+   ],
+   "mean_diff_pct_points": 0.79,
+   "wins": "3/3"
+  },
+  "cmp_exp_ce_vs_b1": {
+   "diffs_pct_points_per_seed": [
+    0.42,
+    -0.34,
+    0.26
+   ],
+   "mean_diff_pct_points": 0.11,
+   "wins": "2/3"
+  },
+  "cmp_exp_ce_vs_cmp_v1": {
+   "diffs_pct_points_per_seed": [
+    0.67,
+    0.11,
+    0.38
+   ],
+   "mean_diff_pct_points": 0.39,
+   "wins": "3/3"
+  },
+  "resnet18_kd_vs_ce": {
+   "diffs_pct_points_per_seed": [
+    0.58,
+    0.55,
+    0.81
+   ],
+   "mean_diff_pct_points": 0.65,
+   "wins": "3/3"
+  },
+  "asf_kd_vs_ce": {
+   "diffs_pct_points_per_seed": [
+    0.91,
+    0.72,
+    0.48
+   ],
+   "mean_diff_pct_points": 0.7,
+   "wins": "3/3"
+  },
+  "cmp_exp_kd_vs_ce": {
+   "diffs_pct_points_per_seed": [
+    0.16,
+    0.48,
+    0.13
+   ],
+   "mean_diff_pct_points": 0.26,
+   "wins": "3/3"
+  }
+ },
+ "audit_010": {
+  "n_images": 31500,
+  "n_classes": 45,
+  "decode_errors": 0,
+  "exact_dup_files": 16,
+  "exact_dup_groups": 8,
+  "neardup_candidate_pairs": 20,
+  "neardup_candidate_same_class": 13,
+  "neardup_candidate_cross_class": 7,
+  "neardup_mutual_pairs": 16,
+  "neardup_mutual_same_class": 12,
+  "neardup_mutual_cross_class": 4,
+  "split_counts": {
+   "train": 23626,
+   "val": 3149,
+   "test": 4725
+  },
+  "split_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a"
+ },
  "kd_overhead": {
-  "teacher_inference_overhead": "KD epoch ~100-104s vs CE ~49-53s (teacher forward online)",
+  "teacher_inference_overhead": "Cả CE và KD đều chạy đủ 15 epoch ở cả 3 seed; thời gian ~2× (~100s vs ~47–50s/epoch) là do teacher ConvNeXt-T forward online mỗi batch.",
   "teacher_training_cost_history": {
    "model": "B4 ConvNeXt-T",
    "train_time_h_per_run": 0.616,
@@ -502,13 +676,14 @@
   }
  },
  "audit": {
-  "fairness": "LOẠI A — 12 trường protocol GIỐNG hệt giữa CE/KD; khác biệt duy nhất kd_alpha/kd_T (biến điều tra). notes/v4_audit.json",
-  "seed0_merge": "HỢP LỆ — config s0 vs s1/s2 chỉ khác epoch_saved; teacher hash 9627ca43 xác nhận logs cả 2 kernel; code nhúng notebook 110b đúng (không nhiễm bug _gate_input)",
-  "cmp_exp_h1a": "Sửa lỗi quên .exp() trên logit_scale (κ=exp(θ)∈[10,64]); CMP-exp-CE vượt CMP-CE v1 (+0.39% 3/3) và B1 (+0.11% test, 2/3; +0.40% val, 3/3); CMP-exp-KD hội tụ sạch (KD loss 15.21→0.51, 95.74%±0.05%)."
+  "fairness": "LOẠI A — 12 trường protocol giống hệt giữa CE và KD (notes/v4_audit.json).",
+  "seed0_merge": "HỢP LỆ — s0 (110b) vs s1/s2 (111) cùng config & teacher hash 9627ca43.",
+  "cmp_exp_v4": "Cấu hình V4 (κ=exp(θ)∈[10,64] + hard-max + k-means init): CMP-exp-CE đạt 95.48% F1 test (vượt CMP v1 +0.39 điểm 3/3 seed và B1 +0.11 điểm 2/3 seed); CMP-exp-KD hội tụ sạch (95.74%±0.05%)."
  },
  "protocol": {
   "split_sha256": "cc70020a85091b4d86fd519e6246b2ca397a20bca551803d532bf8cc1254645a",
   "epochs_max": 15,
+  "executed_epochs_all_runs": 15,
   "early_stop_patience": 5,
   "batch": 128,
   "optimizer": "AdamW lr 1e-4/1e-3 wd 1e-4 cosine warmup 5%",
@@ -520,6 +695,7 @@
   ],
   "amp": true,
   "input": "256x256 ImageNet-norm RRC+hflip+vflip",
+  "latency_protocol": "Tesla T4 (cuda), batch=1, 256x256, n_warmup=10, n_iter=50, median (ms); bảng tổng hợp gồm nhiều phiên đo (071b, 112c, 121)",
   "test_caveat": "test đã quan sát qua v1/v2/v3 — v3/v4 là nghiên cứu mở rộng theo final_plan_v3/v4 đã khóa"
  }
 }

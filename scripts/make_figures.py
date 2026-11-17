@@ -73,17 +73,49 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_val_f1_final.png", dpi=150)
 plt.close(fig)
 
-# 2) TEST F1 vs latency — scatter (đủ 11 mô hình từ results_master)
-fig, ax = plt.subplots(figsize=(8.2, 5.2))
+# 2) TEST F1 vs latency — 2 panels: zoom vùng pretrained (0.943–0.972) + toàn cảnh gồm B0
+fig, (ax_all, ax) = plt.subplots(1, 2, figsize=(12.2, 5.2), gridspec_kw={"width_ratios": [1.0, 2.2]})
 for k in keys:
     e = MODELS[k]
-    lat = e.get("latency_ms_3seed_mean") or e.get("latency_ms_bestvalseed")
+    lat = e["latency_ms_3seed_mean"]
+    f1_val = e["test_3seed_f1"]["mean"]
+    ax_all.scatter(lat, f1_val, s=65, color=color_of(k), zorder=3)
+ax_all.annotate("B0 SmallCNN\n(0.5904, 1.54ms)", (MODELS["smallcnn"]["latency_ms_3seed_mean"], MODELS["smallcnn"]["test_3seed_f1"]["mean"]),
+                textcoords="offset points", xytext=(8, 6), fontsize=8)
+ax_all.set_xlabel("Latency batch-1 (ms)")
+ax_all.set_ylabel("TEST macro-F1 (3-seed)")
+ax_all.set_title("Toàn cảnh (gồm B0)")
+ax_all.set_xlim(1.0, 8.2)
+ax_all.set_ylim(0.55, 1.0)
+ax_all.grid(alpha=0.3)
+
+OFFSETS = {
+    "mobilenetv3s": (8, -10),
+    "resnet18": (-18, -15),
+    "CMP_C2": (8, -12),
+    "ASF_A2fix_ent": (8, -14),
+    "cmp_exp_ce": (-78, 8),
+    "cmp_exp_kd": (-82, 16),
+    "asf_kd": (8, 8),
+    "resnet18_kd": (8, 6),
+    "efficientnetb0": (-72, -14),
+    "convnextt": (-80, 4),
+}
+for k in keys:
+    if k == "smallcnn":
+        continue
+    e = MODELS[k]
+    lat = e["latency_ms_3seed_mean"]
     f1_val = e["test_3seed_f1"]["mean"]
     ax.scatter(lat, f1_val, s=110, color=color_of(k), zorder=3)
-    ax.annotate(SHORT[k], (lat, f1_val), textcoords="offset points", xytext=(7, 4), fontsize=8)
-ax.set_xlabel("Latency batch-1 (ms, median)")
+    dx, dy = OFFSETS.get(k, (7, 4))
+    ax.annotate(SHORT[k], (lat, f1_val), textcoords="offset points", xytext=(dx, dy), fontsize=8.2,
+                arrowprops={"arrowstyle": "-", "color": "#888888", "lw": 0.6})
+ax.set_xlabel("Latency batch-1 (ms, 3-seed mean trên T4)")
 ax.set_ylabel("TEST macro-F1 (3-seed mean)")
-ax.set_title("TEST macro-F1 (3 seeds) vs latency (4,725 test images)")
+ax.set_title("Zoom vùng pretrained (4,725 ảnh test — chú ý khác phiên đo T4)")
+ax.set_xlim(2.0, 7.9)
+ax.set_ylim(0.943, 0.971)
 ax.grid(alpha=0.3)
 fig.tight_layout()
 fig.savefig(FIG / "fig_test_f1_latency.png", dpi=150)

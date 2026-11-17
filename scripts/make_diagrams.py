@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sơ đồ kiến trúc ASF / CMP / KD — vẽ vector matplotlib (không dùng ảnh AI).
+"""Sơ đồ kiến trúc ASF / CMP-exp / KD — vẽ vector matplotlib (không dùng ảnh AI).
 
 Output: notes/figures/fig_asf_arch.png, fig_cmp_arch.png, fig_kd_arch.png
 """
@@ -24,7 +24,7 @@ EDGE = "#444444"
 
 
 def box(ax, x, y, w, h, text, color, fs=8.5):
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.02",
+    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.01",
                                 fc=color, ec=EDGE, lw=0.9))
     ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=fs)
 
@@ -37,76 +37,79 @@ def arrow(ax, x1, y1, x2, y2, label=None, fs=7, style="-|>"):
 
 
 # ================= ASF =================
-fig, ax = plt.subplots(figsize=(10.5, 6.2))
-ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
-box(ax, 0.02, 0.44, 0.13, 0.12, "Ảnh input\n256×256×3", C_OUT)
-box(ax, 0.20, 0.44, 0.15, 0.12, "ResNet18 stem\n+layer1 (pretrained)", C_BACK)
-box(ax, 0.40, 0.62, 0.15, 0.11, "layer2\n128ch, 32×32", C_BACK)
-box(ax, 0.40, 0.27, 0.15, 0.11, "layer3 → layer4\n512ch, 16×16", C_BACK)
-# Haar
-box(ax, 0.60, 0.62, 0.13, 0.11, "Haar DWT\nLL·LH·HL·HH", C_MODULE)
-box(ax, 0.60, 0.27, 0.13, 0.11, "Haar DWT\nLL·LH·HL·HH", C_MODULE)
-arrow(ax, 0.55, 0.675, 0.60, 0.675)
-arrow(ax, 0.55, 0.325, 0.60, 0.325)
-# proj + GAP 8 thành phần
-box(ax, 0.60, 0.455, 0.13, 0.09, "8× [1×1 conv → BN\n→ ReLU → GAP]", C_MODULE)
-arrow(ax, 0.665, 0.62, 0.665, 0.545)
-arrow(ax, 0.665, 0.38, 0.665, 0.455)
-# gate
-box(ax, 0.60, 0.06, 0.13, 0.10, "Gate MLP\nsoftmax → w₈ theo ảnh", C_GATE)
-# fusion
-box(ax, 0.78, 0.455, 0.15, 0.09, "Fused = Σ wᵢ·fᵢ\n→ Linear (small-init)", C_MODULE)
-arrow(ax, 0.73, 0.50, 0.78, 0.50)
-arrow(ax, 0.665, 0.16, 0.85, 0.455)
-# backbone path
-arrow(ax, 0.35, 0.50, 0.40, 0.325)
-arrow(ax, 0.35, 0.50, 0.40, 0.675)
-box(ax, 0.78, 0.27, 0.15, 0.10, "GAP(layer4)\n512-d backbone", C_BACK)
-arrow(ax, 0.55, 0.325, 0.78, 0.32)
-# head
-box(ax, 0.62, 0.75, 0.24, 0.11, "Head: backbone + residual\n→ Linear → 45 lớp", C_OUT)
-arrow(ax, 0.855, 0.37, 0.80, 0.75)
-arrow(ax, 0.855, 0.545, 0.80, 0.75)
-ax.text(0.5, 0.955, "ASF-ResNet18 (A2fix-ent): wavelet đa tỉ lệ + gate theo ảnh + entropy reg 0.05",
+fig, ax = plt.subplots(figsize=(11.2, 6.2))
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.axis("off")
+box(ax, 0.02, 0.44, 0.11, 0.13, "Ảnh input\n256×256×3", C_OUT, fs=8.2)
+box(ax, 0.17, 0.44, 0.14, 0.13, "ResNet18 stem\n+layer1 (pretrained)", C_BACK, fs=8.2)
+box(ax, 0.35, 0.65, 0.14, 0.12, "layer2\n128ch, 32×32", C_BACK, fs=8.2)
+box(ax, 0.35, 0.25, 0.14, 0.12, "layer3 → layer4\n512ch, 8×8", C_BACK, fs=8.2)
+box(ax, 0.53, 0.65, 0.14, 0.12, "ORIG + Haar DWT\nLH·HL·HH (16×16)", C_MODULE, fs=8.0)
+box(ax, 0.53, 0.36, 0.14, 0.12, "ORIG + Haar DWT\nLH·HL·HH (4×4)", C_MODULE, fs=8.0)
+box(ax, 0.53, 0.505, 0.14, 0.10, "8× [1×1 conv → BN\n→ ReLU → GAP]", C_MODULE, fs=8.0)
+box(ax, 0.53, 0.08, 0.14, 0.10, "Gate Linear(8F→8)\nsoftmax → w₈/ảnh", C_GATE, fs=8.0)
+box(ax, 0.72, 0.505, 0.125, 0.11, "Fused = Σ wᵢ·fᵢ\n→ Linear (std 1e-3)", C_MODULE, fs=8.0)
+box(ax, 0.72, 0.19, 0.125, 0.12, "GAP(layer4)\n512-d backbone", C_BACK, fs=8.2)
+box(ax, 0.875, 0.37, 0.105, 0.14, "backbone + res\n→ Linear\n→ 45 lớp", C_OUT, fs=8.0)
+
+arrow(ax, 0.135, 0.505, 0.165, 0.505)
+arrow(ax, 0.315, 0.505, 0.345, 0.71)
+arrow(ax, 0.315, 0.505, 0.345, 0.31)
+arrow(ax, 0.495, 0.71, 0.525, 0.71)
+arrow(ax, 0.495, 0.31, 0.525, 0.42)
+arrow(ax, 0.495, 0.25, 0.715, 0.25)
+arrow(ax, 0.60, 0.645, 0.60, 0.61)
+arrow(ax, 0.60, 0.485, 0.60, 0.50)
+arrow(ax, 0.675, 0.555, 0.715, 0.555)
+arrow(ax, 0.675, 0.15, 0.72, 0.50)
+arrow(ax, 0.85, 0.55, 0.875, 0.46)
+arrow(ax, 0.85, 0.26, 0.875, 0.41)
+
+ax.text(0.5, 0.94, "ASF-ResNet18 (A2fix-ent): wavelet đa tỉ lệ + gate theo ảnh + entropy reg λ=0.05",
         ha="center", fontsize=10, weight="bold")
-ax.text(0.5, 0.012, "Nhánh backbone pretrained giữ nguyên; nhánh wavelet khởi tạo small-init; "
-                    "LL ≡ feature map gốc trước tách; entropy reg chống gate sụp 1-hot",
-        ha="center", fontsize=7.5, color="#555555")
+ax.text(0.5, 0.015, "Backbone pretrained giữ nguyên; nhánh phụ khởi tạo small-init (std=1e-3); "
+                    "ORIG ≡ feature map gốc trước tách; entropy reg chống sụp 1-hot",
+        ha="center", fontsize=7.6, color="#555555")
 fig.tight_layout()
 fig.savefig(FIG / "fig_asf_arch.png", dpi=200)
 plt.close(fig)
 
-# ================= CMP =================
-fig, ax = plt.subplots(figsize=(10.5, 5.6))
-ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
-box(ax, 0.02, 0.42, 0.13, 0.12, "Ảnh input\n256×256×3", C_OUT)
-box(ax, 0.20, 0.42, 0.15, 0.12, "ResNet18\n(pretrained) → GAP", C_BACK)
-box(ax, 0.40, 0.42, 0.14, 0.12, "Embedding Linear\n→ L2 normalize", C_MODULE)
-box(ax, 0.62, 0.60, 0.16, 0.13, "Prototypes\nK=2/lớp × 45 lớp\nL2 normalize (k-means init)", C_MODULE)
-box(ax, 0.62, 0.24, 0.16, 0.12, "sim = e·pᵏ\nlogit = κ·maxₖ (hard-max)\nκ học được, clamp", C_GATE)
-arrow(ax, 0.35, 0.48, 0.40, 0.48)
-arrow(ax, 0.54, 0.48, 0.62, 0.655)
-arrow(ax, 0.54, 0.48, 0.62, 0.30)
-arrow(ax, 0.70, 0.60, 0.70, 0.36)
-box(ax, 0.40, 0.06, 0.16, 0.11, "Confusion graph W\ntrain-only probe (90/10)\n8 cặp đối xứng", C_MODULE)
-arrow(ax, 0.48, 0.17, 0.665, 0.24)
-box(ax, 0.84, 0.42, 0.14, 0.12, "CE + pair loss\nsoftplus(m+s_c−s_y)\n(v2; KD-v3 bỏ pair)", C_OUT)
-arrow(ax, 0.78, 0.30, 0.84, 0.45)
-ax.text(0.5, 0.95, "CMP-ResNet18 (C2/CMP-P): multi-prototype cosine classifier",
+# ================= CMP-exp (V4) =================
+fig, ax = plt.subplots(figsize=(11.0, 5.6))
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.axis("off")
+box(ax, 0.02, 0.43, 0.11, 0.14, "Ảnh input\n256×256×3", C_OUT, fs=8.3)
+box(ax, 0.17, 0.43, 0.14, 0.14, "ResNet18\n(pretrained) → GAP\n(512-d)", C_BACK, fs=8.3)
+box(ax, 0.35, 0.43, 0.15, 0.14, "Embedding Linear\n512→512\n→ L2 normalize (e)", C_MODULE, fs=8.3)
+box(ax, 0.55, 0.64, 0.20, 0.16, "Prototypes K=2 × 45 lớp\nL2 normalize (p_{c,k})\nk-means init trên TRAIN", C_MODULE, fs=8.2)
+box(ax, 0.55, 0.23, 0.20, 0.15, "Cosine sim: s = e · p_{c,k}\nHard-max theo K=2\nmax_k(s_{c,k})", C_GATE, fs=8.2)
+box(ax, 0.80, 0.43, 0.17, 0.15, "Scale mũ κ·max_k(s)\nκ = exp(θ) ∈ [10, 64]\n→ CE (V4) / + KD (V4-KD)", C_OUT, fs=8.2)
+
+arrow(ax, 0.135, 0.50, 0.165, 0.50)
+arrow(ax, 0.315, 0.50, 0.345, 0.50)
+arrow(ax, 0.505, 0.48, 0.545, 0.31)
+arrow(ax, 0.65, 0.635, 0.65, 0.39)
+arrow(ax, 0.755, 0.31, 0.795, 0.49)
+
+ax.text(0.5, 0.94, "CMP-exp-ResNet18 (V4): k-means init + cosine similarity + hard-max + κ = exp(θ)",
         ha="center", fontsize=10, weight="bold")
-ax.text(0.5, 0.01, "v1 LSE → prototype collapse (inter-cos 1.0); v2 hard-max phá collapse nhưng F1 không tăng; "
-                    "KD không hội tụ tốt trên hard-max → CMP dừng ở C2",
-        ha="center", fontsize=7.5, color="#555555")
+ax.text(0.5, 0.05, "Cấu hình ablation cũ (không dùng trong V4 chính): v1 LSE-logits (collapse), "
+                   "C3/CMP-PG dùng confusion graph (train-only 90/10), margin và pair loss.",
+        ha="center", fontsize=7.8, color="#555555")
 fig.tight_layout()
 fig.savefig(FIG / "fig_cmp_arch.png", dpi=200)
 plt.close(fig)
 
 # ================= KD =================
 fig, ax = plt.subplots(figsize=(10.5, 5.8))
-ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.axis("off")
 box(ax, 0.02, 0.40, 0.13, 0.14, "Ảnh train\n256×256\n(cùng view)", C_OUT)
 box(ax, 0.21, 0.58, 0.17, 0.13, "Teacher: ConvNeXt-T\nFROZEN eval, no grad\n(val F1 0.9691)\nchỉ dùng lúc train", "#eee6f7")
-box(ax, 0.21, 0.22, 0.17, 0.13, "Student:\nResNet18 / ASF / CMP\n(ImageNet init)", C_BACK)
+box(ax, 0.21, 0.22, 0.17, 0.13, "Student:\nResNet18 / ASF / CMP-exp\n(ImageNet init)", C_BACK)
 box(ax, 0.45, 0.58, 0.16, 0.13, "Soft targets\nsoftmax(z_t / T=4)", C_MODULE)
 box(ax, 0.45, 0.22, 0.16, 0.13, "Logits student\n+ CE nhãn thật", C_MODULE)
 box(ax, 0.68, 0.40, 0.18, 0.13, "L = (1−α)·CE\n+ α·T²·KL(t‖s)\nα=0.5, T=4", C_GATE)
@@ -127,4 +130,4 @@ fig.tight_layout()
 fig.savefig(FIG / "fig_kd_arch.png", dpi=200)
 plt.close(fig)
 
-print("saved:", [p.name for p in sorted(FIG.glob("fig_*arch*.png"))] + ["fig_kd_arch.png"])
+print("saved:", [p.name for p in sorted(FIG.glob("fig_*arch*.png"))])

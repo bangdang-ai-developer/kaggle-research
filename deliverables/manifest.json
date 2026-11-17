@@ -7,6 +7,10 @@
   "size_bytes": 46522043,
   "sha256": "61bf5e2d48ec2981b6f0bbfcbb6c9f9f11e5c5b3fc0ac35c59541648a23ad5b7"
  },
+ "outputs/resisc45-final-proposed-asf-cmp-3-seeds/ckpt_CMP_C2_s1.pt": {
+  "size_bytes": 46031706,
+  "sha256": "88b7046f440fe654796f4a35939768f40860a19d46eb7fcfd0ebb02449e0a8bc"
+ },
  "outputs/resisc45-final-baselines-b0-b4-3-seeds/ckpt_convnextt_s2.pt": {
   "size_bytes": 111488299,
   "sha256": "9627ca43dc5a39ca7b66e570340c29d5c980972bda35c83982a3be00455ea501"
