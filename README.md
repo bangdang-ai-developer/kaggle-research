@@ -123,8 +123,8 @@ Toàn bộ chạy trên Kaggle GPU (Tesla T4), tổng ~18.5 giờ qua 4 vòng (`
 ## Bộ tài liệu nộp
 
 Thư mục [deliverables/](deliverables/):
-- **Bao_cao_cuoi_mon_NWPU_RESISC45.docx** — báo cáo cuối môn đầy đủ
-- **Slides_cuoi_mon_NWPU_RESISC45.pptx** — 19 slides kèm speaker notes
+- **Do_an_cuoi_mon_NWPU_RESISC45.docx** — báo cáo đồ án cuối môn đầy đủ
+- **Bao_ve_do_an_NWPU_RESISC45.pptx** — slide bảo vệ đồ án
 - **Bao_cao_ket_qua_nghien_cuu.md** — báo cáo chi tiết markdown
 - **results_master.json / .csv** — bảng số liệu chuẩn (nguồn duy nhất)
 - **manifest.json** — SHA256 của 18 checkpoint/artifact nguồn

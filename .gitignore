@@ -9,6 +9,7 @@ __pycache__/
 # Data & outputs - khong commit (tai lai bang scripts/fetch_data.sh, output pull tu Kaggle)
 data/
 outputs/
+notebooks/**/*.pt
 
 # macOS
 .DS_Store

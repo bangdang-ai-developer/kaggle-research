@@ -15,8 +15,8 @@ Toàn bộ lệnh dưới đây chạy trực tiếp từ thư mục gốc sau k
 ├── notebooks/<slug>/            # nb.py + kernel-metadata.json cho toàn bộ 22+ kernels
 ├── notes/                       # Plans, registry, diagnostics, limitations, figures/*.png
 ├── deliverables/
-│   ├── Bao_cao_cuoi_mon_NWPU_RESISC45.docx
-│   ├── Slides_cuoi_mon_NWPU_RESISC45.pptx
+│   ├── Do_an_cuoi_mon_NWPU_RESISC45.docx
+│   ├── Bao_ve_do_an_NWPU_RESISC45.pptx
 │   ├── Bao_cao_ket_qua_nghien_cuu.md
 │   ├── results_master.json / .csv
 │   ├── manifest.json            # SHA256 của 18 artifact nguồn (checkpoints + reports)

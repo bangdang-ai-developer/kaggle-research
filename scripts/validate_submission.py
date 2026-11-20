@@ -213,7 +213,7 @@ bao_cao_md = (ROOT / "deliverables" / "Bao_cao_ket_qua_nghien_cuu.md").read_text
 verify_md_table("Bao_cao_ket_qua_nghien_cuu.md", bao_cao_md, "Acc % ± std", "F1 % ± std", ALL_ROW_ALIASES)
 
 # 6) Deliverables hiện diện
-for f in ("Bao_cao_cuoi_mon_NWPU_RESISC45.docx", "Slides_cuoi_mon_NWPU_RESISC45.pptx",
+for f in ("Do_an_cuoi_mon_NWPU_RESISC45.docx", "Bao_ve_do_an_NWPU_RESISC45.pptx",
           "Bao_cao_ket_qua_nghien_cuu.md", "results_master.json", "results_master.csv", "manifest.json",
           "README_REPRODUCE.md", "demo_smoke.json"):
     check(f"deliverables/{f} tồn tại", (ROOT / "deliverables" / f).exists())
@@ -228,8 +228,8 @@ if zip_path.exists():
         check("ZIP không chứa file nhạy cảm hoặc checkpoint .pt", not bad, str(bad))
         check("ZIP ≥ 70 files", len(names) >= 70, f"{len(names)}")
         for req in ("README.md", "pyproject.toml", "uv.lock", ".python-version", "demo/app.py", "src/models.py",
-                    "deliverables/Bao_cao_cuoi_mon_NWPU_RESISC45.docx",
-                    "deliverables/Slides_cuoi_mon_NWPU_RESISC45.pptx",
+                    "deliverables/Do_an_cuoi_mon_NWPU_RESISC45.docx",
+                    "deliverables/Bao_ve_do_an_NWPU_RESISC45.pptx",
                     "deliverables/results_master.json",
                     "deliverables/README_REPRODUCE.md",
                     "notebooks/120-h1a-screen/nb.py",
